@@ -67,7 +67,7 @@ class BrowseScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield Static(id="topbar")
         with Horizontal(id="layout"):
-            yield Sidebar()
+            yield Sidebar(id="sidebar")
             with Vertical(id="main"):
                 yield Static("", id="breadcrumb")
                 with Horizontal(id="filter-row", classes="hidden"):
@@ -194,12 +194,15 @@ class BrowseScreen(Screen[None]):
         self._pending_detail = token
         try:
             detail = await retry_on_login(self.app, self.app.executor, lambda: svc.detail(item))
-            links = await svc.links(item)
-            actions = svc.actions(item)
         except Exception as exc:
             if self._pending_detail == token:
                 self._set_status(f"Detail error: {truncate(str(exc), 120)}", error=True)
             return
+        try:
+            links = await svc.links(item)
+        except Exception:
+            links = []
+        actions = svc.actions(item)
         if self._pending_detail == token:
             self._pending_detail = None
             self._current = item

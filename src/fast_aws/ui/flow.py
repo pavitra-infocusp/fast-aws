@@ -10,7 +10,11 @@ from fast_aws.screens.login import LoginScreen
 
 
 async def show_login(app, exec: Executor) -> bool:
-    """Push the interactive SSO login screen and wait for its result."""
+    """Push the interactive SSO login screen and wait for its result.
+
+    Concurrent callers share a single login dialog: if one is already open,
+    we simply await its outcome instead of stacking another dialog.
+    """
     loop = asyncio.get_running_loop()
     fut: asyncio.Future = loop.create_future()
 
@@ -18,9 +22,18 @@ async def show_login(app, exec: Executor) -> bool:
         if not fut.done():
             fut.set_result(result)
 
-    app.push_screen(LoginScreen(exec), callback)
-    result = await fut
-    return result == "ok"
+    existing = getattr(app, "_login_pending", None)
+    if existing is not None:
+        result = await existing
+        return result == "ok"
+
+    app._login_pending = fut
+    try:
+        app.push_screen(LoginScreen(exec), callback)
+        result = await fut
+        return result == "ok"
+    finally:
+        app._login_pending = None
 
 
 async def retry_on_login(app, exec: Executor, fn: Callable[[], Awaitable[Any]], *args: Any, **kwargs: Any):

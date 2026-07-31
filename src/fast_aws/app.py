@@ -43,6 +43,7 @@ class FastAwsApp(App[None]):
     TITLE = "fast-aws"
     SUB_TITLE = "browse AWS resources"
     CSS = THEME
+    ENABLE_COMMAND_PALETTE = False  # we ship our own palette on ctrl+p
 
     def __init__(self, profile: str | None = None, region: str | None = None, readonly: bool = True):
         super().__init__()

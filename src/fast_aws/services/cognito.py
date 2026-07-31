@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import pretty
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 

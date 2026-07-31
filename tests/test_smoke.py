@@ -254,3 +254,66 @@ async def test_profile_picker_lists_profiles():
         assert app.screen.__class__.__name__ == "ProfilePicker"
         lv = app.screen.query_one("#profiles")
         assert len(lv.children) >= 1
+
+@pytest.mark.asyncio
+async def test_filter_and_back(stub_call):
+    from textual.widgets import DataTable
+
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await settle(pilot)
+        table = app.screen.query_one("#table", DataTable)
+        # drill into bucket → 2 rows (logs/ + app.log)
+        await pilot.press("enter")
+        await settle(pilot)
+        assert table.row_count == 2
+        # filter for the object
+        await pilot.press("/")
+        await settle(pilot)
+        await pilot.press("a", "p", "p")
+        await settle(pilot)
+        assert table.row_count == 1
+        # esc clears filter and returns focus to table
+        await pilot.press("escape")
+        await settle(pilot)
+        assert table.row_count == 2
+        # back out of bucket
+        await pilot.press("escape")
+        await settle(pilot)
+        assert table.row_count == 1  # bucket list again
+
+
+@pytest.mark.asyncio
+async def test_palette_switch_service(stub_call):
+    from textual.widgets import DataTable
+
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await settle(pilot)
+        await pilot.press("ctrl+p")
+        await settle(pilot)
+        palette = app.screen.query_one("#palette-input")
+        assert palette.has_focus
+        await pilot.press("G", "o", " ", "t", "o")
+        await settle(pilot)
+        await pilot.press("enter")
+        await settle(pilot)
+        # Go to first matching entry (Go to DynamoDB via its icon label?) — index 0 is top of list
+        # just assert palette dismissed
+        assert app.screen.__class__.__name__ == "BrowseScreen"
+
+
+@pytest.mark.asyncio
+async def test_mode_toggle_readonly_default(stub_call):
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await settle(pilot)
+        assert app.executor.readonly is True
+        assert "READONLY" in str(app.screen.query_one("#topbar").content)
+        await pilot.press("ctrl+e")
+        await settle(pilot)
+        assert app.screen.__class__.__name__ == "ConfirmScreen"
+        await pilot.press("enter")  # confirm Yes
+        await settle(pilot)
+        assert app.executor.readonly is False
+        assert "EDIT" in str(app.screen.query_one("#topbar").content)

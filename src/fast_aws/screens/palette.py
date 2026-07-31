@@ -15,6 +15,7 @@ class PaletteScreen(ModalScreen[str]):
     def __init__(self, entries: list[tuple[str, str]]):
         super().__init__()
         self._entries = entries
+        self._filtered: list[tuple[str, str]] = []
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(classes="dialog small"):
@@ -23,28 +24,28 @@ class PaletteScreen(ModalScreen[str]):
             yield ListView(id="palette-list", classes="dialog-list")
 
     def on_mount(self) -> None:
-        self._render("")
+        self._update_list("")
         self.query_one("#palette-input", Input).focus()
 
-    def _render(self, query: str) -> None:
+    def _update_list(self, query: str) -> None:
         lv = self.query_one("#palette-list", ListView)
-        lv.clear()
         ql = query.strip().lower()
-        for label, value in self._entries:
-            if ql in label.lower():
-                lv.append(ListItem(Label(label)))
+        self._filtered = [(label, value) for label, value in self._entries if ql in label.lower()]
+        lv.clear()
+        for label, value in self._filtered:
+            lv.append(ListItem(Label(label)))
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "palette-input":
-            self._render(event.value)
+            self._update_list(event.value)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        lv = self.query_one("#palette-list", ListView)
-        if lv.index is not None:
-            self.dismiss(self._entries[lv.index][1])
+        if self._filtered:
+            index = self.query_one("#palette-list", ListView).index or 0
+            self.dismiss(self._filtered[index][1])
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
-        self.dismiss(self._entries[event.index][1])
+        self.dismiss(self._filtered[event.index][1])
 
     def action_cancel(self) -> None:
         self.dismiss(None)
