@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from botocore.exceptions import ClientError
 
+from fast_aws.fmt import describe_fallback, fmt_time, truncate
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -71,6 +74,29 @@ class CognitoService(ResourceService):
             except ClientError:
                 return item.payload
         return item.payload
+
+    def describe(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        if item.kind == "user_pool":
+            triggers = d.get("LambdaConfig") or {}
+            trig = ", ".join(f"{k}: {v.split(':')[-1]}" for k, v in triggers.items()) or "none"
+            return "\n".join(
+                [
+                    f"[#94a3b8]Name:[/] {d.get('Name', item.label)}",
+                    f"[#94a3b8]ID:[/] {d.get('Id', item.id)}",
+                    f"[#94a3b8]Status:[/] {d.get('Status', '') or '—'}",
+                    f"[#94a3b8]Created:[/] {fmt_time(d.get('CreationDate'))}",
+                    f"[#94a3b8]Lambda triggers:[/] {truncate(trig, 60)}",
+                ]
+            )
+        if item.kind == "identity_pool":
+            return "\n".join(
+                [
+                    f"[#94a3b8]Name:[/] {d.get('IdentityPoolName', item.label)}",
+                    f"[#94a3b8]ID:[/] {d.get('IdentityPoolId', item.id)}",
+                ]
+            )
+        return describe_fallback(d)
 
     async def links(self, item: Item) -> list[Link]:
         out: list[Link] = []

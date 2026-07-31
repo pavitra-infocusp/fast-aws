@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fast_aws.executor import Executor
+from fast_aws.fmt import describe_fallback
 from fast_aws.models import Action, Item, Link, Page
 
 
@@ -21,6 +22,10 @@ class ResourceService:
 
     async def detail(self, item: Item) -> Any:
         return item.payload
+
+    def describe(self, item: Item, detail: Any) -> str:
+        """Human-meaningful summary for the inspector; overridden per service."""
+        return describe_fallback(detail)
 
     async def links(self, item: Item) -> list[Link]:
         return []

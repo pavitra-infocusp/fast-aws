@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import fmt_bytes, fmt_time
+from fast_aws.fmt import describe_fallback, fmt_bytes, fmt_time, truncate
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -105,6 +106,30 @@ class S3Service(ResourceService):
 
     async def links(self, item: Item) -> list[Link]:
         return []
+
+    def describe(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        if item.kind == "object":
+            return "\n".join(
+                [
+                    f"[#94a3b8]Bucket:[/] {d.get('Bucket', '')}",
+                    f"[#94a3b8]Key:[/] {truncate(item.label, 80)}",
+                    f"[#94a3b8]Size:[/] {fmt_bytes(d.get('ContentLength'))}",
+                    f"[#94a3b8]Modified:[/] {fmt_time(d.get('LastModified'))}",
+                    f"[#94a3b8]Type:[/] {d.get('ContentType', '') or '—'}",
+                    f"[#94a3b8]Class:[/] {d.get('StorageClass', 'STANDARD')}",
+                    f"[#94a3b8]ETag:[/] {truncate(d.get('ETag', ''), 32)}",
+                ]
+            )
+        if item.kind == "bucket":
+            return "\n".join(
+                [
+                    f"[#94a3b8]Bucket:[/] {item.label}",
+                    f"[#94a3b8]Region:[/] {d.get('Region') or '(default)'}",
+                    f"[#94a3b8]Created:[/] {fmt_time(d.get('CreationDate'))}",
+                ]
+            )
+        return describe_fallback(d)
 
     def actions(self, item: Item) -> list[Action]:
         if item.kind == "object":

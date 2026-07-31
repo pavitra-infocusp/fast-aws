@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fast_aws.fmt import fmt_bytes, fmt_time_ms, truncate
+from typing import Any
+
+from fast_aws.fmt import describe_fallback, fmt_bytes, fmt_time_ms, truncate
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -91,6 +93,35 @@ class CloudWatchService(ResourceService):
                 fn = name[len("/aws/lambda/"):].split("/")[0]
                 return [Link("lambda", f"Lambda: {fn}", [], fn, kind="lambda")]
         return []
+
+    def describe(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        if item.kind == "log_group":
+            ret = d.get("retentionInDays")
+            return "\n".join(
+                [
+                    f"[#94a3b8]Group:[/] {d.get('logGroupName', item.label)}",
+                    f"[#94a3b8]Bytes:[/] {fmt_bytes(d.get('storedBytes', 0))}",
+                    f"[#94a3b8]Retention:[/] {ret} d" if ret else "[#94a3b8]Retention:[/] forever",
+                    f"[#94a3b8]Created:[/] {fmt_time_ms(d.get('creationTime'))}",
+                ]
+            )
+        if item.kind == "log_stream":
+            return "\n".join(
+                [
+                    f"[#94a3b8]Stream:[/] {d.get('logStreamName', item.label)}",
+                    f"[#94a3b8]Last event:[/] {fmt_time_ms(d.get('lastEventTimestamp'))}",
+                    f"[#94a3b8]First event:[/] {fmt_time_ms(d.get('creationTime'))}",
+                ]
+            )
+        if item.kind == "log_event":
+            return "\n".join(
+                [
+                    f"[#94a3b8]Timestamp:[/] {fmt_time_ms(d.get('timestamp'))}",
+                    f"[#94a3b8]Message:[/] {truncate(d.get('message', ''), 300)}",
+                ]
+            )
+        return describe_fallback(d)
 
     def actions(self, item: Item) -> list[Action]:
         if item.kind == "log_group":

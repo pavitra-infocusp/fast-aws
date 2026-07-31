@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fast_aws.fmt import copy_to_clipboard, mask
+from typing import Any
+
+from fast_aws.fmt import copy_to_clipboard, fmt_time, mask
 from fast_aws.models import Action, Item, Page
 from fast_aws.services.base import ResourceService
 
@@ -39,6 +41,18 @@ class SSMService(ResourceService):
             return {**item.payload, "Value (masked)": mask(value)}
         except Exception:
             return item.payload
+
+    def describe(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        return "\n".join(
+            [
+                f"[#94a3b8]Name:[/] {d.get('Name', item.label)}",
+                f"[#94a3b8]Type:[/] {d.get('Type', '') or '—'}",
+                f"[#94a3b8]Tier:[/] {d.get('Tier', '') or '—'}",
+                f"[#94a3b8]Modified:[/] {fmt_time(d.get('LastModifiedDate'))}",
+                f"[#94a3b8]Value:[/] {d.get('Value (masked)', '') or '(hidden — a to reveal)'}",
+            ]
+        )
 
     def actions(self, item: Item) -> list[Action]:
         return [

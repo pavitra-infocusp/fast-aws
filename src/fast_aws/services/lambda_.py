@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from botocore.exceptions import ClientError
 
 from fast_aws.executor import LoginRequired
@@ -40,6 +42,25 @@ class LambdaService(ResourceService):
             return await self.exec.call("lambda", "get_function", FunctionName=item.label, ttl=30)
         except ClientError:
             return item.payload
+
+    def describe(self, item: Item, detail: Any) -> str:
+        cfg = detail.get("Configuration", detail) if isinstance(detail, dict) else {}
+        if not isinstance(cfg, dict):
+            cfg = {}
+        arch = (cfg.get("Architectures") or [""])
+        parts = [
+            f"[#94a3b8]Name:[/] {cfg.get('FunctionName', item.label)}",
+            f"[#94a3b8]Runtime:[/] {cfg.get('Runtime', '') or '—'}",
+            f"[#94a3b8]State:[/] {cfg.get('State', '') or '—'}",
+            f"[#94a3b8]Last modified:[/] {cfg.get('LastModified', '') or '—'}",
+            f"[#94a3b8]Handler:[/] {cfg.get('Handler', '') or '—'}",
+            f"[#94a3b8]Memory:[/] {cfg.get('MemorySize', '')} MB" if cfg.get("MemorySize") else None,
+            f"[#94a3b8]Timeout:[/] {cfg.get('Timeout', '')} s" if cfg.get("Timeout") else None,
+            f"[#94a3b8]Arch:[/] {arch[0] if arch else '—'}",
+            f"[#94a3b8]Role:[/] {str(cfg.get('Role', '')).split('/')[-1] or '—'}",
+            f"[#94a3b8]Description:[/] {cfg.get('Description', '') or '—'}",
+        ]
+        return "\n".join(p for p in parts if p)
 
     async def links(self, item: Item) -> list[Link]:
         out: list[Link] = []

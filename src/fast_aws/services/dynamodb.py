@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import fmt_bytes, pretty, truncate, unquote_ddb
+from fast_aws.fmt import fmt_bytes, fmt_time, pretty, truncate, unquote_ddb
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -82,6 +83,32 @@ class DynamoDBService(ResourceService):
 
     async def detail(self, item: Item) -> dict:
         return item.payload
+
+    def describe(self, item: Item, detail: Any) -> str:
+        if item.kind == "item":
+            if isinstance(detail, dict):
+                return "\n".join(f"[#94a3b8]{k}:[/] {unquote_ddb(v)}" for k, v in detail.items())
+            return str(detail)
+        d = detail if isinstance(detail, dict) else {}
+        keys = ", ".join(
+            f"{k.get('AttributeName')} ({k.get('KeyType')})" for k in d.get("KeySchema", [])
+        )
+        billing = (d.get("BillingModeSummary") or {}).get("BillingMode", "PROVISIONED")
+        stream = (d.get("StreamSpecification") or {}).get("StreamEnabled")
+        gsis = d.get("GlobalSecondaryIndexes", [])
+        return "\n".join(
+            [
+                f"[#94a3b8]Table:[/] {d.get('TableName', item.label)}",
+                f"[#94a3b8]Status:[/] {d.get('TableStatus', '') or '—'}",
+                f"[#94a3b8]Items:[/] {d.get('ItemCount', 0)}",
+                f"[#94a3b8]Size:[/] {fmt_bytes(d.get('TableSizeBytes', 0))}",
+                f"[#94a3b8]Keys:[/] {keys or '—'}",
+                f"[#94a3b8]Billing:[/] {billing}",
+                f"[#94a3b8]Stream:[/] {'enabled' if stream else 'off'}",
+                f"[#94a3b8]GSI:[/] {len(gsis)}",
+                f"[#94a3b8]Created:[/] {fmt_time(d.get('CreationDateTime'))}",
+            ]
+        )
 
     def filter(self, items: list[Item], query: str) -> list[Item]:
         q = query.strip().lower()

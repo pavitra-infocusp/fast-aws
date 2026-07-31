@@ -10,7 +10,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Input, Label, ListItem, ListView, Static
 
 from fast_aws.executor import ReadonlyViolation
-from fast_aws.fmt import pretty, summary, truncate
+from fast_aws.fmt import pretty, truncate
 from fast_aws.models import Action, Item, Link, Location, Page
 from fast_aws.services import SIDEBAR, build_services
 from fast_aws.services.base import _pad
@@ -217,7 +217,7 @@ class BrowseScreen(Screen[None]):
         svc = self._services[item.service]
         self.query_one("#insp-title", Static).update(item.label)
         self.query_one("#insp-kind", Static).update(f"{svc.icon} {svc.name} · {item.kind}")
-        body: object = summary(detail)
+        body = svc.describe(item, detail)
         self.query_one("#insp-detail", Static).update(body)
         link_lines = "\n".join(f"{icon_for(l.service)}  {l.title}" for l in links) or "(none)"
         self.query_one("#insp-links", Static).update(link_lines)

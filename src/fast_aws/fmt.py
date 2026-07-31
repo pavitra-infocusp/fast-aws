@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from datetime import datetime, timezone
@@ -86,43 +87,17 @@ def _scalar(value: Any, max_len: int) -> str:
     return truncate(text.replace("\n", " "), max_len)
 
 
-def summary(obj: Any, max_lines: int = 26, max_len: int = 90) -> str:
-    """Compact human-friendly key: value rendering of a boto3 response.
+def humanize(key: str) -> str:
+    """Turn a boto3 key like ``logGroupName`` or ``CreationDate`` into a label."""
+    s = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", str(key).replace("_", " ").strip())
+    return s[:1].upper() + s[1:]
 
-    Nested dicts are flattened one level (``parent.child: value``), long
-    values are truncated, and the result stays short enough for a narrow
-    side panel.
-    """
-    if not isinstance(obj, dict):
-        return _scalar(obj, max_len * 2)
-    lines: list[str] = []
-    total = len(obj)
-    emitted = 0
-    for key, value in obj.items():
-        if emitted >= max_lines:
-            lines.append(f"… {total - emitted} more keys")
-            break
-        if isinstance(value, dict):
-            if not value:
-                lines.append(f"{key}: {{}}")
-                emitted += 1
-            else:
-                for subkey, subval in value.items():
-                    if emitted >= max_lines:
-                        break
-                    lines.append(f"{key}.{subkey}: {_scalar(subval, max_len)}")
-                    emitted += 1
-        elif isinstance(value, list):
-            if not value:
-                lines.append(f"{key}: []")
-                emitted += 1
-            else:
-                lines.append(f"{key}: [{len(value)} items] {_scalar(value, max_len)}")
-                emitted += 1
-        else:
-            lines.append(f"{key}: {_scalar(value, max_len)}")
-            emitted += 1
-    return "\n".join(lines) or "(empty)"
+
+def describe_fallback(obj: Any, max_len: int = 90) -> str:
+    """Generic key: value rendering of a boto3 response (used as a last resort)."""
+    if not isinstance(obj, dict) or not obj:
+        return str(obj) if obj else "(no details)"
+    return "\n".join(f"[#94a3b8]{humanize(k)}:[/] {_scalar(v, max_len)}" for k, v in obj.items())
 
 
 def copy_to_clipboard(value: str) -> bool:

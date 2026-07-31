@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fast_aws.fmt import copy_to_clipboard
+from typing import Any
+
+from fast_aws.fmt import copy_to_clipboard, fmt_time, truncate
 from fast_aws.models import Action, Item, Page
 from fast_aws.services.base import ResourceService
 
@@ -33,6 +35,19 @@ class SecretsService(ResourceService):
 
     async def detail(self, item: Item) -> dict:
         return item.payload
+
+    def describe(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        return "\n".join(
+            [
+                f"[#94a3b8]Name:[/] {d.get('Name', item.label)}",
+                f"[#94a3b8]ARN:[/] {truncate(d.get('ARN', ''), 60)}",
+                f"[#94a3b8]Description:[/] {d.get('Description', '') or '—'}",
+                f"[#94a3b8]Rotation:[/] {'on' if d.get('RotationEnabled') else 'off'}",
+                f"[#94a3b8]Last changed:[/] {fmt_time(d.get('LastChangedDate'))}",
+                f"[#94a3b8]Created:[/] {fmt_time(d.get('CreatedDate'))}",
+            ]
+        )
 
     def actions(self, item: Item) -> list[Action]:
         return [

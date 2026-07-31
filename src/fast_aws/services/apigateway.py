@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from botocore.exceptions import ClientError
 
+from fast_aws.fmt import describe_fallback, truncate
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -88,6 +91,35 @@ class ApiGatewayService(ResourceService):
             except ClientError:
                 return item.payload
         return item.payload
+
+    def describe(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        if item.kind == "api":
+            return "\n".join(
+                [
+                    f"[#94a3b8]Name:[/] {d.get('name', item.label)}",
+                    f"[#94a3b8]ID:[/] {d.get('id', '') or '—'}",
+                    f"[#94a3b8]Created:[/] {d.get('createdDate', '') or '—'}",
+                ]
+            )
+        if item.kind == "resource":
+            methods = "/".join(sorted((d.get("resourceMethods") or {}).keys())) or "—"
+            return "\n".join(
+                [
+                    f"[#94a3b8]Path:[/] {d.get('path', '/')}",
+                    f"[#94a3b8]Methods:[/] {methods}",
+                    f"[#94a3b8]ID:[/] {d.get('id', item.id)}",
+                ]
+            )
+        if item.kind == "stage":
+            return "\n".join(
+                [
+                    f"[#94a3b8]Stage:[/] {d.get('stageName', item.label)}",
+                    f"[#94a3b8]Deployment:[/] {d.get('deploymentId', '') or '—'}",
+                    f"[#94a3b8]Updated:[/] {d.get('lastUpdatedDate', '') or '—'}",
+                ]
+            )
+        return describe_fallback(d)
 
     async def links(self, item: Item) -> list[Link]:
         out: list[Link] = []
