@@ -9,7 +9,7 @@ from textual.widgets import Static
 
 from fast_aws.auth import list_profiles, resolve_region
 from fast_aws.executor import Executor
-from fast_aws.ui.theme import THEME
+from fast_aws.ui.theme import CSS_PATH
 
 
 class NoConfigScreen(Screen[None]):
@@ -42,10 +42,15 @@ class NoConfigScreen(Screen[None]):
 class FastAwsApp(App[None]):
     TITLE = "fast-aws"
     SUB_TITLE = "browse AWS resources"
-    CSS = THEME
+    CSS_PATH = str(CSS_PATH)
     ENABLE_COMMAND_PALETTE = False  # we ship our own palette on ctrl+p
 
-    def __init__(self, profile: str | None = None, region: str | None = None, readonly: bool = True):
+    def __init__(
+        self,
+        profile: str | None = None,
+        region: str | None = None,
+        readonly: bool = True,
+    ):
         super().__init__()
         self.cli_profile = profile
         self.cli_region = region

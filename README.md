@@ -11,6 +11,20 @@ uv run fast-aws --profile my-sso-profile --region us-east-1
 
 Launch without `--profile` to pick one from a menu.
 
+## Development / hot reload
+
+Run the app through Textual's dev runner (live CSS reload + devtools console):
+
+```bash
+uv sync                       # installs dev deps incl. textual-dev
+uv run textual run --dev -c "fast-aws --profile my-sso-profile"
+```
+
+Edit `src/fast_aws/ui/app.tcss` while it runs and the change applies live.
+Run `uv run textual console` in a second terminal to see `print()`/`log()`
+output and Textual events.
+
+
 ## Features
 
 - Browse S3, Lambda, DynamoDB, API Gateway, Cognito (user + identity pools),
@@ -31,6 +45,7 @@ Launch without `--profile` to pick one from a menu.
 | `/` `f`   | Filter current list                     |
 | `l`       | Linked resources (jump)                 |
 | `a`       | Actions for selection                   |
+| `i`       | Show / hide inspector panel             |
 | `r`       | Refresh (clears cache)                  |
 | `Ctrl+P`  | Command palette                         |
 | `Ctrl+E`  | Toggle Readonly ↔ Edit                  |

@@ -13,7 +13,6 @@ from textual.widgets import RichLog, Static
 
 from fast_aws.executor import Executor
 from fast_aws.fmt import fmt_time_ms, truncate
-from fast_aws.ui.theme import TOPBAR
 
 TAIL_WINDOW_MS = 30_000
 POLL_SECONDS = 2.0
@@ -31,7 +30,7 @@ class TailScreen(Screen[None]):
     #tail-log { height: 1fr; }
     #tail-status { height: 1; color: #64748b; background: #10151c; padding: 0 1; }
     #tail-header { height: 1; color: #7dd3fc; text-style: bold; background: #10151c; padding: 0 1; }
-    """ + TOPBAR
+    """
 
     def __init__(self, group: str, exec: Executor):
         super().__init__()
