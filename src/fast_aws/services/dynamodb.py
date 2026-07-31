@@ -7,7 +7,7 @@ import json
 from botocore.exceptions import ClientError
 
 from fast_aws.fmt import fmt_bytes, pretty, unquote_ddb
-from fast_aws.models import Item, Page
+from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
 SCAN_LIMIT = 25
@@ -88,5 +88,5 @@ class DynamoDBService(ResourceService):
             return items
         return [i for i in items if q in i.label.lower() or q in json.dumps(i.payload).lower()]
 
-    async def links(self, item: Item) -> list[Item]:
+    async def links(self, item: Item) -> list[Link]:
         return []

@@ -1,0 +1,78 @@
+"""fast-aws Textual application."""
+
+from __future__ import annotations
+
+from textual.app import App, ComposeResult
+from textual.binding import Binding
+from textual.screen import Screen
+from textual.widgets import Static
+
+from fast_aws.auth import list_profiles, resolve_region
+from fast_aws.executor import Executor
+from fast_aws.ui.theme import THEME
+
+
+class NoConfigScreen(Screen[None]):
+    """Shown when no AWS profiles are configured."""
+
+    BINDINGS = [Binding("q", "quit_app", "Quit"), Binding("escape", "quit_app", "Quit")]
+
+    CSS = """
+    Screen { align: center middle; }
+    #msg { width: 68; max-width: 92%; background: #151b23; border: tall #2f3a48; padding: 2; }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield Static(
+            "[bold #7dd3fc]fast-aws[/]\n\n"
+            "No profiles found in ~/.aws/config.\n\n"
+            "Set up AWS first, then re-launch:\n"
+            "    aws configure          (access keys)\n"
+            "    aws configure sso      (SSO)\n\n"
+            "Or pass a profile directly:\n"
+            "    fast-aws --profile <name> --region <region>\n\n"
+            "[dim]Press q to quit.[/]",
+            id="msg",
+        )
+
+    def action_quit_app(self) -> None:
+        self.app.exit()
+
+
+class FastAwsApp(App[None]):
+    TITLE = "fast-aws"
+    SUB_TITLE = "browse AWS resources"
+    CSS = THEME
+
+    def __init__(self, profile: str | None = None, region: str | None = None, readonly: bool = True):
+        super().__init__()
+        self.cli_profile = profile
+        self.cli_region = region
+        self.readonly = readonly
+        self.profile: str | None = profile
+        self.region: str | None = region
+        self.executor: Executor | None = None
+
+    def on_mount(self) -> None:
+        profiles = list_profiles()
+        if self.cli_profile:
+            self._init_executor(self.cli_profile, self.cli_region)
+        elif profiles:
+            from fast_aws.screens.profile_picker import ProfilePicker
+
+            self.push_screen(ProfilePicker())
+        else:
+            self.push_screen(NoConfigScreen())
+
+    def _init_executor(self, profile: str | None, region: str | None) -> None:
+        """Build the executor and enter the browse screen."""
+        from fast_aws.screens.browse import BrowseScreen
+
+        self.profile = profile or "default"
+        self.region = resolve_region(self.profile, region)
+        self.executor = Executor(self.profile, self.region, readonly=self.readonly)
+        browse = BrowseScreen()
+        if self.screen.id == "_default":
+            self.push_screen(browse)
+        else:
+            self.switch_screen(browse)

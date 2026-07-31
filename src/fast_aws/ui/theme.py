@@ -1,0 +1,225 @@
+"""App-wide CSS theme for fast-aws."""
+
+TOPBAR = """
+#topbar {
+    height: 3;
+    dock: top;
+    background: #10151c;
+    color: #94a3b8;
+    padding: 0 1;
+}
+"""
+
+THEME = """
+Screen {
+    background: #0e1116;
+}
+
+/* ---- top bar ---------------------------------------------------------- */
+""" + TOPBAR + """
+/* ---- layout ------------------------------------------------------------ */
+#layout {
+    height: 1fr;
+}
+#sidebar {
+    width: 32;
+    background: #10151c;
+    border-right: solid #232b36;
+    scrollbar-size: 1 1;
+}
+#sidebar-title {
+    color: #64748b;
+    text-style: bold;
+    padding: 1 1 0 1;
+}
+#services {
+    width: 100%;
+    margin: 1 0 0 0;
+}
+ListView > ListItem {
+    padding: 0 1;
+    height: 1;
+}
+ListView > ListItem.--highlight {
+    background: #1e3a5f;
+}
+ListView > ListItem > Label {
+    padding: 0 1;
+}
+
+#main {
+    height: 1fr;
+}
+
+#breadcrumb {
+    height: 1;
+    padding: 0 1;
+    color: #64748b;
+    background: #10151c;
+}
+#breadcrumb .crumb-sep {
+    color: #334155;
+}
+
+#filter-row {
+    height: 3;
+    background: #10151c;
+    border-bottom: solid #232b36;
+}
+#filter-label {
+    padding: 0 1;
+    width: 8;
+    content-align: center middle;
+    color: #7dd3fc;
+    text-style: bold;
+}
+#filter {
+    border: none;
+    background: transparent;
+}
+
+DataTable {
+    height: 1fr;
+    background: #0e1116;
+    border-bottom: solid #232b36;
+}
+DataTable > .datatable--header {
+    background: #131a23;
+    color: #7dd3fc;
+    text-style: bold;
+}
+DataTable > .datatable--cursor {
+    background: #1e3a5f;
+}
+DataTable > .datatable--odd-row {
+    background: #0f1319;
+}
+DataTable:focus {
+    border: none;
+}
+
+#status {
+    height: 1;
+    padding: 0 1;
+    color: #64748b;
+    background: #10151c;
+}
+#status.error {
+    color: #f87171;
+}
+#status.ok {
+    color: #4ade80;
+}
+
+/* ---- inspector --------------------------------------------------------- */
+#inspector {
+    width: 48;
+    background: #10151c;
+    border-left: solid #232b36;
+}
+#insp-title {
+    text-style: bold;
+    color: #7dd3fc;
+    padding: 1 1 0 1;
+}
+#insp-kind {
+    color: #64748b;
+    padding: 0 1;
+}
+#insp-detail {
+    padding: 1;
+    height: auto;
+    margin: 0 1 0 0;
+}
+#insp-section {
+    color: #94a3b8;
+    text-style: bold;
+    padding: 1 1 0 1;
+}
+#insp-links, #insp-actions {
+    padding: 0 1;
+}
+.insp-row {
+    padding: 0 1;
+}
+
+/* ---- modals ------------------------------------------------------------ */
+ModalScreen {
+    align: center middle;
+    background: rgba(10, 13, 17, 0.6);
+}
+.dialog {
+    width: 72;
+    max-width: 92%;
+    height: auto;
+    max-height: 90%;
+    background: #151b23;
+    border: tall #2f3a48;
+    padding: 1 2;
+}
+.dialog.small {
+    width: 46;
+}
+.dialog-title {
+    text-style: bold;
+    color: #7dd3fc;
+    padding: 0 0 1 0;
+}
+.dialog-list {
+    height: 1fr;
+    margin: 1 0 0 0;
+}
+.dialog-note {
+    color: #64748b;
+    padding: 1 0 0 0;
+}
+.dialog-error {
+    color: #f87171;
+    padding: 1 0 0 0;
+}
+
+#palette-input {
+    margin: 0 0 1 0;
+    border: round #2f3a48;
+}
+
+Button {
+    margin: 1 1 0 0;
+}
+Button.primary {
+    background: #1e3a5f;
+}
+Button.danger {
+    background: #4c1d1d;
+    color: #fca5a5;
+}
+
+#result-scroll {
+    height: 1fr;
+}
+#result-body {
+    height: auto;
+    padding: 1;
+}
+
+RichLog {
+    background: #0a0e13;
+    border: round #2f3a48;
+    height: 1fr;
+    padding: 0 1;
+}
+
+#tail-status {
+    color: #64748b;
+    padding: 0 1 1 0;
+}
+
+LoadingIndicator {
+    align: center middle;
+    height: 1fr;
+}
+"""
+
+CONFIRM_CSS = """
+Button { margin: 1 1 0 0; }
+"""

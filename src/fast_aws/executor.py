@@ -9,7 +9,14 @@ import threading
 import time
 from typing import Any, Callable
 
-from botocore.exceptions import ClientError, TokenRefreshError
+from botocore.exceptions import (
+    ClientError,
+    SSOError,
+    SSOTokenLoadError,
+    TokenRetrievalError,
+    UnauthorizedSSOTokenError,
+    UnknownTokenProviderError,
+)
 
 from fast_aws.auth import make_session
 
@@ -20,6 +27,14 @@ SSO_AUTH_CODES = {
     "InvalidToken",
     "TokenRefreshRequired",
 }
+
+SSO_TOKEN_ERRORS = (
+    TokenRetrievalError,
+    UnauthorizedSSOTokenError,
+    SSOTokenLoadError,
+    SSOError,
+    UnknownTokenProviderError,
+)
 
 
 class AuthError(Exception):
@@ -35,7 +50,7 @@ class ReadonlyViolation(Exception):
 
 
 def is_auth_error(exc: Exception) -> bool:
-    if isinstance(exc, TokenRefreshError):
+    if isinstance(exc, SSO_TOKEN_ERRORS):
         return True
     if isinstance(exc, ClientError):
         code = (exc.response.get("Error") or {}).get("Code") or ""
@@ -101,7 +116,9 @@ class Executor:
 
         try:
             result = await asyncio.to_thread(self._run_sync, service, fn, args, kwargs)
-        except (TokenRefreshError, ClientError) as exc:
+        except SSO_TOKEN_ERRORS as exc:
+            raise LoginRequired from exc
+        except ClientError as exc:
             if not is_auth_error(exc):
                 raise
             raise LoginRequired from exc
