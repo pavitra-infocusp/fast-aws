@@ -78,6 +78,53 @@ def pretty(obj: Any, max_len: int = 8000) -> str:
     return text
 
 
+def _scalar(value: Any, max_len: int) -> str:
+    if isinstance(value, (dict, list)):
+        text = pretty(value, max_len)
+    else:
+        text = str(value)
+    return truncate(text.replace("\n", " "), max_len)
+
+
+def summary(obj: Any, max_lines: int = 26, max_len: int = 90) -> str:
+    """Compact human-friendly key: value rendering of a boto3 response.
+
+    Nested dicts are flattened one level (``parent.child: value``), long
+    values are truncated, and the result stays short enough for a narrow
+    side panel.
+    """
+    if not isinstance(obj, dict):
+        return _scalar(obj, max_len * 2)
+    lines: list[str] = []
+    total = len(obj)
+    emitted = 0
+    for key, value in obj.items():
+        if emitted >= max_lines:
+            lines.append(f"… {total - emitted} more keys")
+            break
+        if isinstance(value, dict):
+            if not value:
+                lines.append(f"{key}: {{}}")
+                emitted += 1
+            else:
+                for subkey, subval in value.items():
+                    if emitted >= max_lines:
+                        break
+                    lines.append(f"{key}.{subkey}: {_scalar(subval, max_len)}")
+                    emitted += 1
+        elif isinstance(value, list):
+            if not value:
+                lines.append(f"{key}: []")
+                emitted += 1
+            else:
+                lines.append(f"{key}: [{len(value)} items] {_scalar(value, max_len)}")
+                emitted += 1
+        else:
+            lines.append(f"{key}: {_scalar(value, max_len)}")
+            emitted += 1
+    return "\n".join(lines) or "(empty)"
+
+
 def copy_to_clipboard(value: str) -> bool:
     """Best-effort clipboard copy via available system tool."""
     for tool in ("xclip", "xsel", "wl-copy", "pbcopy"):

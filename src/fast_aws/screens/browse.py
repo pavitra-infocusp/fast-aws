@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from rich.syntax import Syntax
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -11,12 +10,11 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Input, Label, ListItem, ListView, Static
 
 from fast_aws.executor import ReadonlyViolation
-from fast_aws.fmt import pretty, truncate
+from fast_aws.fmt import pretty, summary, truncate
 from fast_aws.models import Action, Item, Link, Location, Page
 from fast_aws.services import SIDEBAR, build_services
 from fast_aws.services.base import _pad
 from fast_aws.ui.flow import retry_on_login
-from fast_aws.ui.theme import THEME
 from fast_aws.ui.widgets import (
     ActionsScreen,
     ConfirmScreen,
@@ -38,14 +36,13 @@ class BrowseScreen(Screen[None]):
         Binding("escape", "back", "Back"),
         Binding("l", "links", "Links"),
         Binding("a", "actions", "Actions"),
+        Binding("i", "toggle_inspector", "Inspector"),
         Binding("/", "filter", "Filter"),
         Binding("f", "filter", "Filter"),
         Binding("g", "top", "Top"),
         Binding("G", "bottom", "Bottom"),
         Binding("q", "quit_app", "Quit"),
     ]
-
-    CSS = THEME
 
     def __init__(self, initial: Location | None = None):
         super().__init__()
@@ -78,6 +75,7 @@ class BrowseScreen(Screen[None]):
             with VerticalScroll(id="inspector"):
                 yield Static("Inspector", id="insp-title")
                 yield Static("", id="insp-kind")
+                yield Static("Enter → full JSON · i → hide panel", id="insp-note")
                 yield Static("", id="insp-detail")
                 yield Static("Linked resources (l)", classes="insp-section")
                 yield Static("", id="insp-links")
@@ -167,6 +165,10 @@ class BrowseScreen(Screen[None]):
         parts = [f"[bold #7dd3fc]{svc.icon} {svc.name}[/]"]
         for seg in self._loc.path:
             parts.append(f"[dim]/[/][#94a3b8]{truncate(seg, 40)}[/]")
+        if self._current is not None and self._current.label:
+            last = self._loc.path[-1] if self._loc.path else None
+            if not (self._current.is_dir and self._current.label == last):
+                parts.append(f"[dim]▸[/][#e2e8f0]{truncate(self._current.label, 40)}[/]")
         self.query_one("#breadcrumb", Static).update("  ".join(parts))
 
     # -- selection / inspector ---------------------------------------------
@@ -215,15 +217,13 @@ class BrowseScreen(Screen[None]):
         svc = self._services[item.service]
         self.query_one("#insp-title", Static).update(item.label)
         self.query_one("#insp-kind", Static).update(f"{svc.icon} {svc.name} · {item.kind}")
-        if isinstance(detail, dict):
-            body: object = Syntax(pretty(detail), "json", theme="monokai", word_wrap=True)
-        else:
-            body = str(detail)
+        body: object = summary(detail)
         self.query_one("#insp-detail", Static).update(body)
         link_lines = "\n".join(f"{icon_for(l.service)}  {l.title}" for l in links) or "(none)"
         self.query_one("#insp-links", Static).update(link_lines)
         act_lines = "\n".join(f"{('✎' if a.mutates else '·')}  {a.label}" for a in actions) or "(none)"
         self.query_one("#insp-actions", Static).update(act_lines)
+        self._update_breadcrumb()
 
     def _set_status(self, msg: str, error: bool = False) -> None:
         status = self.query_one("#status", Static)
@@ -405,6 +405,15 @@ class BrowseScreen(Screen[None]):
         self.app.push_screen(
             ConfirmScreen("Quit fast-aws?", danger=True), lambda yes: self.app.exit() if yes else None
         )
+
+    def action_toggle_inspector(self) -> None:
+        inspector = self.query_one("#inspector")
+        if inspector.has_class("hidden"):
+            inspector.remove_class("hidden")
+            self.notify("Inspector shown (i)", timeout=2)
+        else:
+            inspector.add_class("hidden")
+            self.notify("Inspector hidden — i to show", timeout=2)
 
     def action_top(self) -> None:
         table = self.query_one("#table", DataTable)

@@ -30,14 +30,14 @@ class ApiGatewayService(ResourceService):
                     self.key,
                     a.get("id", ""),
                     a.get("name", a.get("id", "")),
-                    (a.get("id", ""), a.get("createdDate", "") or ""),
+                    (a.get("createdDate", "") or "",),
                     kind="api",
                     is_dir=True,
                     payload=a,
                 )
                 for a in resp.get("items", [])
             ]
-            return Page(["API name", "ID", "Created"], items)
+            return Page(["API name", "Created"], items)
 
         api = path[0]
         if len(path) == 1:

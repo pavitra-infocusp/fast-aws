@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import fmt_time
+from fast_aws.fmt import fmt_time, truncate
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -52,7 +52,7 @@ class IAMService(ResourceService):
                     self.key,
                     r.get("RoleName", ""),
                     r.get("RoleName", ""),
-                    (r.get("Arn", "") or "",),
+                    (truncate(r.get("Arn", ""), 48),),
                     kind="role",
                     payload=r,
                 )
