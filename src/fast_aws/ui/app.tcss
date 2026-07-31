@@ -2,6 +2,10 @@ Screen {
     background: #0e1116;
 }
 
+.hidden {
+    display: none;
+}
+
 /* ---- top bar ---------------------------------------------------------- */
 #topbar {
     height: 2;
@@ -110,9 +114,6 @@ DataTable:focus {
     width: 40;
     background: #10151c;
     border-left: solid #232b36;
-}
-#inspector.hidden {
-    display: none;
 }
 #insp-title {
     text-style: bold;

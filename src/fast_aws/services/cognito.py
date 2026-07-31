@@ -21,8 +21,8 @@ class CognitoService(ResourceService):
             return Page(
                 ["Section"],
                 [
-                    Item(self.key, POOLS_DIR, "User Pools", (), kind="dir", is_dir=True, payload={}),
-                    Item(self.key, IDENTITY_DIR, "Identity Pools", (), kind="dir", is_dir=True, payload={}),
+                    Item(self.key, POOLS_DIR, "User Pools", ("User Pools",), kind="dir", is_dir=True, payload={}),
+                    Item(self.key, IDENTITY_DIR, "Identity Pools", ("Identity Pools",), kind="dir", is_dir=True, payload={}),
                 ],
             )
         if path[0] == POOLS_DIR:
@@ -32,7 +32,7 @@ class CognitoService(ResourceService):
                     self.key,
                     p.get("Id", ""),
                     p.get("Name", ""),
-                    (p.get("Id", ""), p.get("Status", "") or ""),
+                    (p.get("Name", ""), p.get("Id", ""), p.get("Status", "") or ""),
                     kind="user_pool",
                     is_dir=True,
                     payload=p,
@@ -46,7 +46,7 @@ class CognitoService(ResourceService):
                 self.key,
                 p.get("IdentityPoolId", ""),
                 p.get("IdentityPoolName", ""),
-                (p.get("IdentityPoolId", ""),),
+                (p.get("IdentityPoolName", ""), p.get("IdentityPoolId", "") or ""),
                 kind="identity_pool",
                 is_dir=True,
                 payload=p,

@@ -6,7 +6,7 @@ import json
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import fmt_bytes, pretty, unquote_ddb
+from fast_aws.fmt import fmt_bytes, pretty, truncate, unquote_ddb
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -32,6 +32,7 @@ class DynamoDBService(ResourceService):
                             name,
                             name,
                             (
+                                name,
                                 t.get("TableStatus", ""),
                                 fmt_bytes(t.get("TableSizeBytes", 0)),
                                 str(t.get("ItemCount", 0)),
@@ -43,7 +44,7 @@ class DynamoDBService(ResourceService):
                     )
                 except ClientError:
                     items.append(
-                        Item(self.key, name, name, ("?", "?", "?"), kind="table", is_dir=True, payload={"TableName": name})
+                        Item(self.key, name, name, (name, "?", "?", "?"), kind="table", is_dir=True, payload={"TableName": name})
                     )
             return Page(["Table", "Status", "Size", "Items"], items)
 

@@ -23,6 +23,7 @@ class CloudWatchService(ResourceService):
                     g.get("logGroupName", ""),
                     g.get("logGroupName", ""),
                     (
+                        g.get("logGroupName", "") or "",
                         fmt_bytes(g.get("storedBytes", 0)),
                         fmt_time_ms(g.get("creationTime")),
                         str(g.get("retentionInDays", "∞")),
@@ -51,7 +52,7 @@ class CloudWatchService(ResourceService):
                     self.key,
                     s.get("logStreamName", ""),
                     s.get("logStreamName", ""),
-                    (fmt_time_ms(s.get("lastEventTimestamp")),),
+                    (s.get("logStreamName", "") or "", fmt_time_ms(s.get("lastEventTimestamp"))),
                     kind="log_stream",
                     is_dir=True,
                     payload=s,

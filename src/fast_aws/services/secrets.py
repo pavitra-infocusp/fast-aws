@@ -20,8 +20,8 @@ class SecretsService(ResourceService):
                 s.get("ARN", ""),
                 s.get("Name", ""),
                 (
+                    s.get("Name", "") or "",
                     (s.get("Description") or "")[:80],
-                    "",
                     "on" if s.get("RotationEnabled") else "",
                 ),
                 kind="secret",

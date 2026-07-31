@@ -20,6 +20,7 @@ class SSMService(ResourceService):
                 p.get("Name", ""),
                 p.get("Name", ""),
                 (
+                    p.get("Name", "") or "",
                     p.get("Type", "") or "",
                     p.get("Tier", "") or "",
                     (p.get("LastModifiedDate") or "").isoformat() if hasattr(p.get("LastModifiedDate"), "isoformat") else "",

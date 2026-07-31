@@ -23,6 +23,7 @@ class LambdaService(ResourceService):
                 f.get("FunctionName", ""),
                 f.get("FunctionName", ""),
                 (
+                    f.get("FunctionName", "") or "",
                     f.get("Runtime", "") or "",
                     f.get("State", "") or "",
                     f.get("LastModified", "") or "",

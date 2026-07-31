@@ -30,7 +30,7 @@ class ApiGatewayService(ResourceService):
                     self.key,
                     a.get("id", ""),
                     a.get("name", a.get("id", "")),
-                    (a.get("createdDate", "") or "",),
+                    (a.get("name", a.get("id", "")), a.get("createdDate", "") or ""),
                     kind="api",
                     is_dir=True,
                     payload=a,
@@ -43,7 +43,7 @@ class ApiGatewayService(ResourceService):
         if len(path) == 1:
             resp = await self.exec.call("apigateway", "get_resources", restApiId=api, limit=500, ttl=60)
             items = [
-                Item(self.key, STAGES_DIR, "── Stages ──", ("",), kind="dir", is_dir=True, payload={"api_id": api})
+                Item(self.key, STAGES_DIR, "── Stages ──", ("── Stages ──", ""), kind="dir", is_dir=True, payload={"api_id": api})
             ]
             for r in resp.get("items", []):
                 methods = "/".join(sorted((r.get("resourceMethods") or {}).keys()))
@@ -52,7 +52,7 @@ class ApiGatewayService(ResourceService):
                         self.key,
                         r.get("id", ""),
                         r.get("path", "/"),
-                        (methods,),
+                        (r.get("path", "/"), methods),
                         kind="resource",
                         is_dir=True,
                         payload={"api_id": api, **r},
@@ -67,7 +67,7 @@ class ApiGatewayService(ResourceService):
                 self.key,
                 s.get("stageName", ""),
                 s.get("stageName", ""),
-                (s.get("deploymentId", "") or "", s.get("lastUpdatedDate", "") or ""),
+                (s.get("stageName", ""), s.get("deploymentId", "") or "", s.get("lastUpdatedDate", "") or ""),
                 kind="stage",
                 payload=s,
             )

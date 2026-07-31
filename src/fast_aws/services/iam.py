@@ -23,9 +23,9 @@ class IAMService(ResourceService):
             return Page(
                 ["Type"],
                 [
-                    Item(self.key, USERS_DIR, "Users", (), kind="dir", is_dir=True, payload={}),
-                    Item(self.key, ROLES_DIR, "Roles", (), kind="dir", is_dir=True, payload={}),
-                    Item(self.key, POLICIES_DIR, "Policies (customer)", (), kind="dir", is_dir=True, payload={}),
+                    Item(self.key, USERS_DIR, "Users", ("Users",), kind="dir", is_dir=True, payload={}),
+                    Item(self.key, ROLES_DIR, "Roles", ("Roles",), kind="dir", is_dir=True, payload={}),
+                    Item(self.key, POLICIES_DIR, "Policies (customer)", ("Policies (customer)",), kind="dir", is_dir=True, payload={}),
                 ],
             )
 
@@ -37,7 +37,7 @@ class IAMService(ResourceService):
                     self.key,
                     u.get("UserName", ""),
                     u.get("UserName", ""),
-                    (fmt_time(u.get("CreateDate")),),
+                    (u.get("UserName", ""), fmt_time(u.get("CreateDate"))),
                     kind="user",
                     payload=u,
                 )
@@ -52,7 +52,7 @@ class IAMService(ResourceService):
                     self.key,
                     r.get("RoleName", ""),
                     r.get("RoleName", ""),
-                    (truncate(r.get("Arn", ""), 48),),
+                    (r.get("RoleName", "") or "", truncate(r.get("Arn", ""), 48)),
                     kind="role",
                     payload=r,
                 )
@@ -66,7 +66,7 @@ class IAMService(ResourceService):
                 self.key,
                 p.get("PolicyName", ""),
                 p.get("PolicyName", ""),
-                (str(p.get("AttachmentCount", 0)),),
+                (p.get("PolicyName", ""), str(p.get("AttachmentCount", 0))),
                 kind="policy",
                 payload=p,
             )
