@@ -92,14 +92,19 @@ def _obj(extra: dict | None = None) -> dict:
         },
         "get_resources": {
             "items": [
+                {"id": "root", "path": "/", "resourceMethods": {}},
                 {
                     "id": "r1",
+                    "parentId": "root",
+                    "pathPart": "orders",
                     "path": "/orders",
                     "resourceMethods": {"GET": {}},
-                }
+                },
             ]
         },
         "get_resource": {
+            "id": "r1",
+            "path": "/orders",
             "resourceMethods": {
                 "GET": {
                     "methodIntegration": {
@@ -110,6 +115,17 @@ def _obj(extra: dict | None = None) -> dict:
                     }
                 }
             }
+        },
+        "get_method": {
+            "httpMethod": "GET",
+            "authorizationType": "NONE",
+            "methodIntegration": {
+                "type": "AWS_PROXY",
+                "uri": (
+                    "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/"
+                    "arn:aws:lambda:us-east-1:1:function:orders-handler/invocations"
+                ),
+            },
         },
         "list_user_pools": {"UserPools": [{"Id": "pool1", "Name": "my-pool", "Status": "Enabled"}]},
         "describe_user_pool": {
@@ -246,11 +262,12 @@ async def test_apigw_jump_to_lambda(stub_call):
         sidebar_list.index = 3  # API Gateway
         await pilot.press("enter")
         await settle(pilot)
-        # drill into the API, then the /orders resource
+        # drill into the API: Stages, /,   orders,     GET
         await pilot.press("enter")
         await settle(pilot)
         table = app.screen.query_one("#table")
-        table.move_cursor(row=1)  # /orders resource
+        assert table.row_count == 4
+        table.move_cursor(row=2)  # nested /orders resource
         await settle(pilot)
         await pilot.press("l")
         await settle(pilot)

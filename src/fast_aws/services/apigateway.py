@@ -11,6 +11,7 @@ from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
 STAGES_DIR = "__stages"
+_DIR_LABELS = {STAGES_DIR: "Stages"}
 
 
 def _lambda_from_uri(uri: str) -> str | None:
@@ -23,10 +24,68 @@ def _lambda_from_uri(uri: str) -> str | None:
     return seg.split(":")[-1]
 
 
+def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item]:
+    """Flatten the API resource tree into indented path / method rows."""
+    by_id = {r.get("id", ""): r for r in resources if r.get("id")}
+    children: dict[str | None, list[dict[str, Any]]] = {}
+    for r in resources:
+        parent = r.get("parentId")
+        if parent not in by_id:
+            parent = None
+        children.setdefault(parent, []).append(r)
+
+    for kids in children.values():
+        kids.sort(key=lambda r: (r.get("pathPart") or r.get("path") or "").lower())
+
+    items: list[Item] = []
+
+    def walk(parent_id: str | None, depth: int) -> None:
+        for r in children.get(parent_id, []):
+            rid = r.get("id", "")
+            path = r.get("path", "/")
+            name = r.get("pathPart") or path or "/"
+            indent = "  " * depth
+            methods = r.get("resourceMethods") or {}
+            items.append(
+                Item(
+                    "apigateway",
+                    rid,
+                    path,
+                    (f"{indent}{name}", "path"),
+                    kind="resource",
+                    payload={"api_id": api, **r},
+                )
+            )
+            for method in sorted(methods):
+                m_indent = "  " * (depth + 1)
+                items.append(
+                    Item(
+                        "apigateway",
+                        f"{rid}:{method}",
+                        f"{method.upper()} {path}",
+                        (f"{m_indent}{method.upper()}", "method"),
+                        kind="method",
+                        payload={
+                            "api_id": api,
+                            "resource_id": rid,
+                            "http_method": method,
+                            "path": path,
+                        },
+                    )
+                )
+            walk(rid, depth + 1)
+
+    walk(None, 0)
+    return items
+
+
 class ApiGatewayService(ResourceService):
     key = "apigateway"
     name = "API Gateway"
     icon = "🔁"
+
+    def path_label(self, segment: str) -> str:
+        return _DIR_LABELS.get(segment, segment)
 
     async def list_page(self, path: list[str]) -> Page:
         if not path:
@@ -61,22 +120,12 @@ class ApiGatewayService(ResourceService):
                     payload={"api_id": api},
                 )
             ]
-            for r in resp.get("items", []):
-                methods = "/".join(sorted((r.get("resourceMethods") or {}).keys()))
-                items.append(
-                    Item(
-                        self.key,
-                        r.get("id", ""),
-                        r.get("path", "/"),
-                        (r.get("path", "/"), methods),
-                        kind="resource",
-                        is_dir=True,
-                        payload={"api_id": api, **r},
-                    )
-                )
-            return Page(["Path", "Methods"], items)
+            items.extend(_resource_tree_items(api, resp.get("items", [])))
+            return Page(["Resource", "Type"], items)
 
-        # Stages
+        if path[1] != STAGES_DIR:
+            return Page(["Value"], [])
+
         resp = await self.exec.call("apigateway", "get_stages", restApiId=api, ttl=60)
         items = [
             Item(
@@ -107,6 +156,18 @@ class ApiGatewayService(ResourceService):
                 )
             except ClientError:
                 return item.payload
+        if item.kind == "method":
+            try:
+                return await self.exec.call(
+                    "apigateway",
+                    "get_method",
+                    restApiId=item.payload.get("api_id", ""),
+                    resourceId=item.payload.get("resource_id", ""),
+                    httpMethod=item.payload.get("http_method", ""),
+                    ttl=60,
+                )
+            except ClientError:
+                return item.payload
         return item.payload
 
     def describe(self, item: Item, detail: Any) -> str:
@@ -126,6 +187,16 @@ class ApiGatewayService(ResourceService):
                     ("Path", d.get("path", "/")),
                     ("Methods", methods),
                     ("ID", d.get("id", item.id)),
+                ]
+            )
+        if item.kind == "method":
+            integ = d.get("methodIntegration") or {}
+            return kv_block(
+                [
+                    ("Method", item.payload.get("http_method", "").upper() or item.label),
+                    ("Path", item.payload.get("path", "/") or "—"),
+                    ("Integration", integ.get("type", "") or "—"),
+                    ("URI", integ.get("uri", "") or "—"),
                 ]
             )
         if item.kind == "stage":
@@ -184,6 +255,21 @@ class ApiGatewayService(ResourceService):
                         )
                     )
             return "\n".join(parts)
+        if item.kind == "method":
+            integ = d.get("methodIntegration") or {}
+            method = item.payload.get("http_method") or d.get("httpMethod") or ""
+            return kv_block(
+                [
+                    ("Method", method.upper()),
+                    ("Path", item.payload.get("path", "/") or "—"),
+                    ("Resource ID", item.payload.get("resource_id", "") or "—"),
+                    ("Authorization", d.get("authorizationType", "") or "—"),
+                    ("API key required", "yes" if d.get("apiKeyRequired") else "no"),
+                    ("Integration", integ.get("type", "") or "—"),
+                    ("Integration HTTP", integ.get("httpMethod", "") or "—"),
+                    ("URI", integ.get("uri", "") or "—"),
+                ]
+            )
         if item.kind == "stage":
             vars_ = d.get("variables") or {}
             parts = [
@@ -207,6 +293,25 @@ class ApiGatewayService(ResourceService):
 
     async def links(self, item: Item) -> list[Link]:
         out: list[Link] = []
+        if item.kind == "method":
+            api = item.payload.get("api_id", "")
+            try:
+                conf = await self.exec.call(
+                    "apigateway",
+                    "get_method",
+                    restApiId=api,
+                    resourceId=item.payload.get("resource_id", ""),
+                    httpMethod=item.payload.get("http_method", ""),
+                    ttl=60,
+                )
+            except ClientError:
+                return out
+            uri = (conf.get("methodIntegration") or {}).get("uri", "")
+            fn = _lambda_from_uri(uri)
+            if fn:
+                method = item.payload.get("http_method", "").upper()
+                out.append(Link("lambda", f"Lambda: {fn} ({method})", [], fn, kind="lambda"))
+            return out
         if item.kind != "resource":
             return out
         api = item.payload.get("api_id", "")
