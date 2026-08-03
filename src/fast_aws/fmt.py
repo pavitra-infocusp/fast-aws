@@ -36,10 +36,13 @@ def http_method_markup(method: str) -> str:
     return f"[bold {http_method_color(m)}]{m}[/]"
 
 
-def fmt_http_method(method: str, *, indent: str = "") -> Text:
-    """Colored HTTP verb for DataTable cells."""
+def fmt_http_method(method: str, *, prefix: str = "", indent: str = "") -> Text:
+    """Colored HTTP verb for DataTable cells; ``prefix`` holds tree guides."""
     m = method.upper()
-    text = Text(indent)
+    text = Text()
+    guide = prefix or indent
+    if guide:
+        text.append(guide, style="#475569")
     text.append(m, style=f"bold {http_method_color(m)}")
     return text
 

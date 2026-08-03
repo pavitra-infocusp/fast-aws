@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from botocore.exceptions import ClientError
+from rich.text import Text
 
 from fast_aws.fmt import (
     describe_fallback,
@@ -21,6 +22,7 @@ from fast_aws.services.base import ResourceService
 
 STAGES_DIR = "__stages"
 _DIR_LABELS = {STAGES_DIR: "Stages"}
+_GUIDE_STYLE = "#475569"
 
 
 def _lambda_from_uri(uri: str) -> str | None:
@@ -31,6 +33,21 @@ def _lambda_from_uri(uri: str) -> str | None:
     if ":function:" in seg:
         return seg.split(":function:", 1)[1].split(":", 1)[0]
     return seg.split(":")[-1]
+
+
+def _make_prefix(continues: list[bool], is_last: bool) -> str:
+    """Build a box-drawing indent guide for one tree row."""
+    parts = ["│  " if c else "   " for c in continues]
+    parts.append("└─ " if is_last else "├─ ")
+    return "".join(parts)
+
+
+def _path_cell(prefix: str, name: str) -> Text:
+    text = Text()
+    if prefix:
+        text.append(prefix, style=_GUIDE_STYLE)
+    text.append(name)
+    return text
 
 
 def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item]:
@@ -48,45 +65,71 @@ def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item
 
     items: list[Item] = []
 
-    def walk(parent_id: str | None, depth: int) -> None:
-        for r in children.get(parent_id, []):
-            rid = r.get("id", "")
-            path = r.get("path", "/")
-            name = r.get("pathPart") or path or "/"
-            indent = "  " * depth
-            methods = r.get("resourceMethods") or {}
+    def emit(r: dict[str, Any], continues: list[bool], *, is_last: bool, bare: bool) -> None:
+        rid = r.get("id", "")
+        path = r.get("path", "/")
+        name = r.get("pathPart") or path or "/"
+        methods = sorted((r.get("resourceMethods") or {}).keys())
+        sub = children.get(rid, [])
+
+        if bare:
+            prefix = ""
+            next_continues: list[bool] = []
+        else:
+            prefix = _make_prefix(continues, is_last)
+            next_continues = continues + [not is_last]
+
+        items.append(
+            Item(
+                "apigateway",
+                rid,
+                path,
+                (_path_cell(prefix, name), "path"),
+                kind="resource",
+                payload={"api_id": api, **r},
+            )
+        )
+
+        for mi, method in enumerate(methods):
+            last_under = mi == len(methods) - 1 and not sub
             items.append(
                 Item(
                     "apigateway",
-                    rid,
-                    path,
-                    (f"{indent}{name}", "path"),
-                    kind="resource",
-                    payload={"api_id": api, **r},
+                    f"{rid}:{method}",
+                    f"{method.upper()} {path}",
+                    (
+                        fmt_http_method(
+                            method, prefix=_make_prefix(next_continues, last_under)
+                        ),
+                        "method",
+                    ),
+                    kind="method",
+                    payload={
+                        "api_id": api,
+                        "resource_id": rid,
+                        "http_method": method,
+                        "path": path,
+                    },
                 )
             )
-            for method in sorted(methods):
-                m_indent = "  " * (depth + 1)
-                items.append(
-                    Item(
-                        "apigateway",
-                        f"{rid}:{method}",
-                        f"{method.upper()} {path}",
-                        (fmt_http_method(method, indent=m_indent), "method"),
-                        kind="method",
-                        payload={
-                            "api_id": api,
-                            "resource_id": rid,
-                            "http_method": method,
-                            "path": path,
-                        },
-                    )
-                )
-            walk(rid, depth + 1)
 
-    walk(None, 0)
+        for si, child in enumerate(sub):
+            emit(
+                child,
+                next_continues,
+                is_last=si == len(sub) - 1,
+                bare=False,
+            )
+
+    roots = children.get(None, [])
+    for i, r in enumerate(roots):
+        emit(
+            r,
+            [],
+            is_last=i == len(roots) - 1,
+            bare=len(roots) == 1,
+        )
     return items
-
 
 class ApiGatewayService(ResourceService):
     key = "apigateway"
