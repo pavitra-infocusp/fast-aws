@@ -45,7 +45,7 @@ def list_profiles() -> list[ProfileInfo]:
         if section == "default":
             name = "default"
         elif section.startswith("profile "):
-            name = section[len("profile "):]
+            name = section[len("profile ") :]
         else:
             # sso-session, assume-role chains, etc. — not directly selectable
             continue

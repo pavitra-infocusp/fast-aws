@@ -26,7 +26,9 @@ def main() -> None:
         prog="fast-aws",
         description="Fast TUI browser for AWS resources using local profiles & SSO.",
     )
-    parser.add_argument("-p", "--profile", help="AWS profile to use (defaults to interactive picker)")
+    parser.add_argument(
+        "-p", "--profile", help="AWS profile to use (defaults to interactive picker)"
+    )
     parser.add_argument("-r", "--region", help="AWS region override (defaults to profile/env)")
     parser.add_argument(
         "--edit",

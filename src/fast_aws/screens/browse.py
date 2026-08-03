@@ -12,6 +12,9 @@ from textual.widgets import DataTable, Input, Label, ListItem, ListView, Static
 from fast_aws.executor import ReadonlyViolation
 from fast_aws.fmt import pretty, truncate
 from fast_aws.models import Action, Item, Link, Location, Page
+from fast_aws.screens.palette import PaletteScreen
+from fast_aws.screens.profile_picker import ProfilePicker
+from fast_aws.screens.tail import TailScreen
 from fast_aws.services import SIDEBAR, build_services
 from fast_aws.services.base import _pad
 from fast_aws.ui.flow import retry_on_login
@@ -22,9 +25,6 @@ from fast_aws.ui.widgets import (
     ResultScreen,
     icon_for,
 )
-from fast_aws.screens.palette import PaletteScreen
-from fast_aws.screens.profile_picker import ProfilePicker
-from fast_aws.screens.tail import TailScreen
 
 
 class BrowseScreen(Screen[None]):
@@ -87,7 +87,7 @@ class BrowseScreen(Screen[None]):
         self._refresh_topbar()
 
         lv = self.query_one("#services", ListView)
-        for key, path, label in SIDEBAR:
+        for key, _path, label in SIDEBAR:
             lv.append(ListItem(Label(f"{icon_for(key)}  {label}")))
         lv.focus()
 
@@ -108,9 +108,12 @@ class BrowseScreen(Screen[None]):
 
     # -- navigation --------------------------------------------------------
     def _navigate(self, loc: Location, push_history: bool = True) -> None:
-        if push_history and self._loc is not None:
-            if self._loc.service_key != loc.service_key or self._loc.path != loc.path:
-                self._history.append(self._loc)
+        if (
+            push_history
+            and self._loc is not None
+            and (self._loc.service_key != loc.service_key or self._loc.path != loc.path)
+        ):
+            self._history.append(self._loc)
         self._loc = loc
         self._load(loc)
 
@@ -119,7 +122,9 @@ class BrowseScreen(Screen[None]):
         svc = self._services[loc.service_key]
         self._set_status(f"Loading {svc.name}…")
         try:
-            page = await retry_on_login(self.app, self.app.executor, lambda: svc.list_page(loc.path))
+            page = await retry_on_login(
+                self.app, self.app.executor, lambda: svc.list_page(loc.path)
+            )
         except Exception as exc:
             self._set_status(f"Error loading {svc.name}: {truncate(str(exc), 160)}", error=True)
             return
@@ -213,15 +218,21 @@ class BrowseScreen(Screen[None]):
             self._current_actions = actions
             self._render_inspector(item, detail, links, actions)
 
-    def _render_inspector(self, item: Item, detail: object, links: list[Link], actions: list[Action]) -> None:
+    def _render_inspector(
+        self, item: Item, detail: object, links: list[Link], actions: list[Action]
+    ) -> None:
         svc = self._services[item.service]
         self.query_one("#insp-title", Static).update(item.label)
         self.query_one("#insp-kind", Static).update(f"{svc.icon} {svc.name} · {item.kind}")
         body = svc.describe(item, detail)
         self.query_one("#insp-detail", Static).update(body)
-        link_lines = "\n".join(f"{icon_for(l.service)}  {l.title}" for l in links) or "(none)"
+        link_lines = (
+            "\n".join(f"{icon_for(link.service)}  {link.title}" for link in links) or "(none)"
+        )
         self.query_one("#insp-links", Static).update(link_lines)
-        act_lines = "\n".join(f"{('✎' if a.mutates else '·')}  {a.label}" for a in actions) or "(none)"
+        act_lines = (
+            "\n".join(f"{('✎' if a.mutates else '·')}  {a.label}" for a in actions) or "(none)"
+        )
         self.query_one("#insp-actions", Static).update(act_lines)
         self._update_breadcrumb()
 
@@ -236,7 +247,9 @@ class BrowseScreen(Screen[None]):
             new_path = self._loc.path + [item.id]
             self._navigate(Location(self._loc.service_key, new_path, label=item.label))
         else:
-            self.app.push_screen(ResultScreen(item.label, pretty(self._current_detail or item.payload)))
+            self.app.push_screen(
+                ResultScreen(item.label, pretty(self._current_detail or item.payload))
+            )
 
     def action_open(self) -> None:
         item = self._selected_item()
@@ -283,9 +296,7 @@ class BrowseScreen(Screen[None]):
         if action.mutates:
             self._pending_action = (svc, action, self._current)
             self.app.push_screen(
-                ConfirmScreen(
-                    f"Run '{action.label}' on '{self._current.label}'?", danger=True
-                ),
+                ConfirmScreen(f"Run '{action.label}' on '{self._current.label}'?", danger=True),
                 self._on_action_confirmed,
             )
         else:
@@ -379,7 +390,7 @@ class BrowseScreen(Screen[None]):
             ("Refresh (clear cache)", "refresh"),
             ("Quit fast-aws", "quit"),
         ]
-        for key, path, label in SIDEBAR:
+        for key, _path, label in SIDEBAR:
             entries.append((f"{icon_for(key)}  Go to {label}", f"go:{key}"))
         return entries
 
@@ -394,7 +405,8 @@ class BrowseScreen(Screen[None]):
             self.action_refresh()
         elif value == "quit":
             self.app.push_screen(
-                ConfirmScreen("Quit fast-aws?", danger=True), lambda yes: self.app.exit() if yes else None
+                ConfirmScreen("Quit fast-aws?", danger=True),
+                lambda yes: self.app.exit() if yes else None,
             )
         elif value.startswith("go:"):
             key = value.split(":", 1)[1]
@@ -403,7 +415,8 @@ class BrowseScreen(Screen[None]):
 
     def action_quit_app(self) -> None:
         self.app.push_screen(
-            ConfirmScreen("Quit fast-aws?", danger=True), lambda yes: self.app.exit() if yes else None
+            ConfirmScreen("Quit fast-aws?", danger=True),
+            lambda yes: self.app.exit() if yes else None,
         )
 
     def action_toggle_inspector(self) -> None:

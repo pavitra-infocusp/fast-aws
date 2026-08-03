@@ -90,7 +90,7 @@ class CloudWatchService(ResourceService):
         if item.kind == "log_group":
             name = item.label
             if name.startswith("/aws/lambda/"):
-                fn = name[len("/aws/lambda/"):].split("/")[0]
+                fn = name[len("/aws/lambda/") :].split("/")[0]
                 return [Link("lambda", f"Lambda: {fn}", [], fn, kind="lambda")]
         return []
 

@@ -94,7 +94,9 @@ class LinksScreen(ModalScreen[Link | None]):
         with VerticalScroll(classes="dialog small"):
             yield Static("Jump to linked resource", classes="dialog-title")
             yield Label("Press Enter to jump, Esc to cancel", classes="dialog-note")
-            items = [ListItem(Label(f"{icon_for(link.service)}  {link.title}")) for link in self._links]
+            items = [
+                ListItem(Label(f"{icon_for(link.service)}  {link.title}")) for link in self._links
+            ]
             yield ListView(*items, id="links-list", classes="dialog-list")
 
     def on_mount(self) -> None:
@@ -123,7 +125,10 @@ class ActionsScreen(ModalScreen[Action | None]):
         with VerticalScroll(classes="dialog small"):
             yield Static("Actions", classes="dialog-title")
             if self._readonly:
-                yield Label("Readonly mode — mutating actions hidden (Ctrl+E to enable Edit)", classes="dialog-note")
+                yield Label(
+                    "Readonly mode — mutating actions hidden (Ctrl+E to enable Edit)",
+                    classes="dialog-note",
+                )
             items = []
             for action in self._actions:
                 if action.mutates and self._readonly:

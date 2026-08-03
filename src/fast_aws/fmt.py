@@ -6,7 +6,7 @@ import json
 import re
 import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -27,15 +27,15 @@ def fmt_time(ts: Any, tz: bool = True) -> str:
         if ts > 10**12:  # milliseconds
             ts = ts / 1000
         try:
-            dt = datetime.fromtimestamp(ts, tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):
+            dt = datetime.fromtimestamp(ts, tz=UTC)
+        except OverflowError, OSError, ValueError:
             return str(ts)
     elif isinstance(ts, str):
         return ts
     else:
         dt = ts
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
     s = dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
     return f"{s} {_tz_label(dt)}" if tz else s
 
@@ -72,7 +72,7 @@ def mask(value: str, keep: int = 8) -> str:
 def pretty(obj: Any, max_len: int = 8000) -> str:
     try:
         text = json.dumps(obj, indent=2, default=str, ensure_ascii=False)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         text = str(obj)
     if len(text) > max_len:
         text = text[: max_len - 3] + "..."
@@ -80,10 +80,7 @@ def pretty(obj: Any, max_len: int = 8000) -> str:
 
 
 def _scalar(value: Any, max_len: int) -> str:
-    if isinstance(value, (dict, list)):
-        text = pretty(value, max_len)
-    else:
-        text = str(value)
+    text = pretty(value, max_len) if isinstance(value, (dict, list)) else str(value)
     return truncate(text.replace("\n", " "), max_len)
 
 

@@ -25,7 +25,9 @@ class SSMService(ResourceService):
                     p.get("Name", "") or "",
                     p.get("Type", "") or "",
                     p.get("Tier", "") or "",
-                    (p.get("LastModifiedDate") or "").isoformat() if hasattr(p.get("LastModifiedDate"), "isoformat") else "",
+                    (p.get("LastModifiedDate") or "").isoformat()
+                    if hasattr(p.get("LastModifiedDate"), "isoformat")
+                    else "",
                 ),
                 kind="param",
                 payload=p,
@@ -36,7 +38,9 @@ class SSMService(ResourceService):
 
     async def detail(self, item: Item) -> dict:
         try:
-            p = await self.exec.call("ssm", "get_parameter", Name=item.id, WithDecryption=True, ttl=15)
+            p = await self.exec.call(
+                "ssm", "get_parameter", Name=item.id, WithDecryption=True, ttl=15
+            )
             value = p.get("Parameter", {}).get("Value", "")
             return {**item.payload, "Value (masked)": mask(value)}
         except Exception:
@@ -62,7 +66,9 @@ class SSMService(ResourceService):
 
     async def run_action(self, action_id: str, item: Item) -> str:
         if action_id in ("reveal", "copy"):
-            p = await self.exec.call("ssm", "get_parameter", Name=item.id, WithDecryption=True, ttl=False, no_cache=True)
+            p = await self.exec.call(
+                "ssm", "get_parameter", Name=item.id, WithDecryption=True, ttl=False, no_cache=True
+            )
             value = p.get("Parameter", {}).get("Value", "")
             if action_id == "copy":
                 if copy_to_clipboard(value):

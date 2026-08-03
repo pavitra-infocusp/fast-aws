@@ -6,7 +6,7 @@ from typing import Any
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import describe_fallback, truncate
+from fast_aws.fmt import describe_fallback
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -44,9 +44,19 @@ class ApiGatewayService(ResourceService):
 
         api = path[0]
         if len(path) == 1:
-            resp = await self.exec.call("apigateway", "get_resources", restApiId=api, limit=500, ttl=60)
+            resp = await self.exec.call(
+                "apigateway", "get_resources", restApiId=api, limit=500, ttl=60
+            )
             items = [
-                Item(self.key, STAGES_DIR, "── Stages ──", ("── Stages ──", ""), kind="dir", is_dir=True, payload={"api_id": api})
+                Item(
+                    self.key,
+                    STAGES_DIR,
+                    "── Stages ──",
+                    ("── Stages ──", ""),
+                    kind="dir",
+                    is_dir=True,
+                    payload={"api_id": api},
+                )
             ]
             for r in resp.get("items", []):
                 methods = "/".join(sorted((r.get("resourceMethods") or {}).keys()))
@@ -70,7 +80,11 @@ class ApiGatewayService(ResourceService):
                 self.key,
                 s.get("stageName", ""),
                 s.get("stageName", ""),
-                (s.get("stageName", ""), s.get("deploymentId", "") or "", s.get("lastUpdatedDate", "") or ""),
+                (
+                    s.get("stageName", ""),
+                    s.get("deploymentId", "") or "",
+                    s.get("lastUpdatedDate", "") or "",
+                ),
                 kind="stage",
                 payload=s,
             )
@@ -127,14 +141,18 @@ class ApiGatewayService(ResourceService):
             return out
         api = item.payload.get("api_id", "")
         try:
-            res = await self.exec.call("apigateway", "get_resource", restApiId=api, resourceId=item.id, ttl=60)
+            res = await self.exec.call(
+                "apigateway", "get_resource", restApiId=api, resourceId=item.id, ttl=60
+            )
         except ClientError:
             return out
         for method, conf in (res.get("resourceMethods") or {}).items():
             uri = (conf.get("methodIntegration") or {}).get("uri", "")
             fn = _lambda_from_uri(uri)
             if fn:
-                out.append(Link("lambda", f"Lambda: {fn} ({method.upper()})", [], fn, kind="lambda"))
+                out.append(
+                    Link("lambda", f"Lambda: {fn} ({method.upper()})", [], fn, kind="lambda")
+                )
         return out
 
     async def run_action(self, action_id: str, item: Item) -> str:

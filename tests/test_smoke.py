@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -12,11 +12,13 @@ from fast_aws.executor import Executor
 
 def _obj(extra: dict | None = None) -> dict:
     obj = {
-        "list_buckets": {"Buckets": [{"Name": "demo-bucket", "CreationDate": datetime(2024, 1, 1, tzinfo=timezone.utc)}]},
+        "list_buckets": {
+            "Buckets": [{"Name": "demo-bucket", "CreationDate": datetime(2024, 1, 1, tzinfo=UTC)}]
+        },
         "list_objects_v2": {
             "CommonPrefixes": [{"Prefix": "logs/"}],
             "Contents": [
-                {"Key": "app.log", "Size": 2048, "LastModified": datetime(2024, 2, 1, tzinfo=timezone.utc)}
+                {"Key": "app.log", "Size": 2048, "LastModified": datetime(2024, 2, 1, tzinfo=UTC)}
             ],
         },
         "get_bucket_location": {"LocationConstraint": "us-east-1"},
@@ -39,7 +41,10 @@ def _obj(extra: dict | None = None) -> dict:
                 },
             ]
         },
-        "get_function": {"Configuration": {"FunctionName": "my-fn", "Runtime": "python3.12"}, "Tags": {}},
+        "get_function": {
+            "Configuration": {"FunctionName": "my-fn", "Runtime": "python3.12"},
+            "Tags": {},
+        },
         "list_event_source_mappings": {"EventSourceMappings": []},
         "describe_log_groups": {
             "logGroups": [
@@ -52,9 +57,7 @@ def _obj(extra: dict | None = None) -> dict:
             ]
         },
         "describe_log_streams": {
-            "logStreams": [
-                {"logStreamName": "stream1", "lastEventTimestamp": 1700000001000}
-            ]
+            "logStreams": [{"logStreamName": "stream1", "lastEventTimestamp": 1700000001000}]
         },
         "get_log_events": {
             "events": [{"timestamp": 1700000001000, "message": "hello from lambda"}]
@@ -71,7 +74,13 @@ def _obj(extra: dict | None = None) -> dict:
         },
         "scan": {"Items": [{"id": {"S": "user-1"}, "name": {"S": "alice"}}]},
         "list_secrets": {
-            "SecretList": [{"Name": "db/password", "ARN": "arn:aws:secretsmanager:us-east-1:1:secret:db/password", "Description": "db creds"}]
+            "SecretList": [
+                {
+                    "Name": "db/password",
+                    "ARN": "arn:aws:secretsmanager:us-east-1:1:secret:db/password",
+                    "Description": "db creds",
+                }
+            ]
         },
         "get_secret_value": {"SecretString": "sup3rs3cret"},
         "describe_parameters": {
@@ -92,7 +101,14 @@ def _obj(extra: dict | None = None) -> dict:
         },
         "get_resource": {
             "resourceMethods": {
-                "GET": {"methodIntegration": {"uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:1:function:orders-handler/invocations"}}
+                "GET": {
+                    "methodIntegration": {
+                        "uri": (
+                            "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/"
+                            "arn:aws:lambda:us-east-1:1:function:orders-handler/invocations"
+                        )
+                    }
+                }
             }
         },
         "list_user_pools": {"UserPools": [{"Id": "pool1", "Name": "my-pool", "Status": "Enabled"}]},
@@ -102,9 +118,13 @@ def _obj(extra: dict | None = None) -> dict:
                 "LambdaConfig": {"PreSignUp": "arn:aws:lambda:us-east-1:1:function:pool-trigger"},
             }
         },
-        "list_identity_pools": {"IdentityPools": [{"IdentityPoolId": "ip1", "IdentityPoolName": "mobile"}]},
+        "list_identity_pools": {
+            "IdentityPools": [{"IdentityPoolId": "ip1", "IdentityPoolName": "mobile"}]
+        },
         "describe_identity_pool": {"IdentityPoolId": "ip1", "RoleMappings": {}},
-        "list_roles": {"Roles": [{"RoleName": "my-exec-role", "Arn": "arn:aws:iam::1:role/my-exec-role"}]},
+        "list_roles": {
+            "Roles": [{"RoleName": "my-exec-role", "Arn": "arn:aws:iam::1:role/my-exec-role"}]
+        },
         "list_attached_role_policies": {"AttachedPolicies": [{"PolicyName": "MyPolicy"}]},
         "list_policies": {"Policies": [{"PolicyName": "MyPolicy", "AttachmentCount": 1}]},
         "get_caller_identity": {"Arn": "arn:aws:iam::1:user/test", "Account": "1", "UserId": "1"},
@@ -116,12 +136,12 @@ def _obj(extra: dict | None = None) -> dict:
 
 STUB = _obj()
 
+
 async def settle(pilot, n=4):
     for _ in range(n):
         await pilot.pause()
     await pilot.app.workers.wait_for_complete()
     await pilot.pause()
-
 
 
 @pytest.fixture
@@ -246,7 +266,6 @@ async def test_apigw_jump_to_lambda(stub_call):
 
 @pytest.mark.asyncio
 async def test_profile_picker_lists_profiles():
-    from fast_aws.screens.profile_picker import ProfilePicker
 
     app = FastAwsApp(readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:
@@ -254,6 +273,7 @@ async def test_profile_picker_lists_profiles():
         assert app.screen.__class__.__name__ == "ProfilePicker"
         lv = app.screen.query_one("#profiles")
         assert len(lv.children) >= 1
+
 
 @pytest.mark.asyncio
 async def test_filter_and_back(stub_call):
@@ -285,7 +305,6 @@ async def test_filter_and_back(stub_call):
 
 @pytest.mark.asyncio
 async def test_palette_switch_service(stub_call):
-    from textual.widgets import DataTable
 
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:

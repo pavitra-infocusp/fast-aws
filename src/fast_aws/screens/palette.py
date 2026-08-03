@@ -32,7 +32,7 @@ class PaletteScreen(ModalScreen[str]):
         ql = query.strip().lower()
         self._filtered = [(label, value) for label, value in self._entries if ql in label.lower()]
         lv.clear()
-        for label, value in self._filtered:
+        for label, _value in self._filtered:
             lv.append(ListItem(Label(label)))
 
     def on_input_changed(self, event: Input.Changed) -> None:

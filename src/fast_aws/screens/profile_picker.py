@@ -34,12 +34,11 @@ class ProfilePicker(Screen[None]):
     CSS = CSS
 
     def compose(self) -> ComposeResult:
-        with Container(id="profile-screen"):
-            with VerticalScroll(id="profile-dialog"):
-                yield Static("fast-aws", classes="dialog-title")
-                yield Static("Select an AWS profile to browse", classes="dialog-note")
-                yield ListView(id="profiles")
-                yield Static("", id="profile-status", classes="dialog-note")
+        with Container(id="profile-screen"), VerticalScroll(id="profile-dialog"):
+            yield Static("fast-aws", classes="dialog-title")
+            yield Static("Select an AWS profile to browse", classes="dialog-note")
+            yield ListView(id="profiles")
+            yield Static("", id="profile-status", classes="dialog-note")
 
     def on_mount(self) -> None:
         self._profiles = list_profiles()
@@ -77,7 +76,9 @@ class ProfilePicker(Screen[None]):
             status.update(f"Login failed: {truncate(str(exc), 160)}", classes="dialog-error")
             return
         except Exception as exc:
-            status.update(f"Could not authenticate: {truncate(str(exc), 160)}", classes="dialog-error")
+            status.update(
+                f"Could not authenticate: {truncate(str(exc), 160)}", classes="dialog-error"
+            )
             return
 
         app.executor = exec

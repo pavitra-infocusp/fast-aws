@@ -96,9 +96,7 @@ class S3Service(ResourceService):
             }
         if item.kind == "bucket":
             try:
-                loc = await self.exec.call(
-                    "s3", "get_bucket_location", Bucket=item.label, ttl=300
-                )
+                loc = await self.exec.call("s3", "get_bucket_location", Bucket=item.label, ttl=300)
                 item.payload["Region"] = loc.get("LocationConstraint") or "us-east-1"
             except ClientError:
                 pass

@@ -24,8 +24,24 @@ class CognitoService(ResourceService):
             return Page(
                 ["Section"],
                 [
-                    Item(self.key, POOLS_DIR, "User Pools", ("User Pools",), kind="dir", is_dir=True, payload={}),
-                    Item(self.key, IDENTITY_DIR, "Identity Pools", ("Identity Pools",), kind="dir", is_dir=True, payload={}),
+                    Item(
+                        self.key,
+                        POOLS_DIR,
+                        "User Pools",
+                        ("User Pools",),
+                        kind="dir",
+                        is_dir=True,
+                        payload={},
+                    ),
+                    Item(
+                        self.key,
+                        IDENTITY_DIR,
+                        "Identity Pools",
+                        ("Identity Pools",),
+                        kind="dir",
+                        is_dir=True,
+                        payload={},
+                    ),
                 ],
             )
         if path[0] == POOLS_DIR:
@@ -43,7 +59,9 @@ class CognitoService(ResourceService):
                 for p in resp.get("UserPools", [])
             ]
             return Page(["User pool", "ID", "Status"], items)
-        resp = await self.exec.call("cognito-identity", "list_identity_pools", MaxResults=60, ttl=60)
+        resp = await self.exec.call(
+            "cognito-identity", "list_identity_pools", MaxResults=60, ttl=60
+        )
         items = [
             Item(
                 self.key,
@@ -61,7 +79,9 @@ class CognitoService(ResourceService):
     async def detail(self, item: Item) -> dict:
         if item.kind == "user_pool":
             try:
-                d = await self.exec.call("cognito-idp", "describe_user_pool", UserPoolId=item.id, ttl=60)
+                d = await self.exec.call(
+                    "cognito-idp", "describe_user_pool", UserPoolId=item.id, ttl=60
+                )
                 return d.get("UserPool", d)
             except ClientError:
                 return item.payload
@@ -102,7 +122,9 @@ class CognitoService(ResourceService):
         out: list[Link] = []
         if item.kind == "user_pool":
             try:
-                d = await self.exec.call("cognito-idp", "describe_user_pool", UserPoolId=item.id, ttl=60)
+                d = await self.exec.call(
+                    "cognito-idp", "describe_user_pool", UserPoolId=item.id, ttl=60
+                )
                 cfg = d.get("UserPool", {}).get("LambdaConfig", {}) or {}
             except ClientError:
                 cfg = {}
@@ -122,7 +144,9 @@ class CognitoService(ResourceService):
                 role_arn = m.get("RoleArn")
                 if role_arn:
                     role_name = role_arn.split("/")[-1]
-                    out.append(Link("iam", f"Role: {role_name} ({key})", ["roles"], role_name, kind="role"))
+                    out.append(
+                        Link("iam", f"Role: {role_name} ({key})", ["roles"], role_name, kind="role")
+                    )
         return out
 
     def actions(self, item: Item) -> list[Action]:
@@ -136,7 +160,7 @@ class CognitoService(ResourceService):
                 "cognito-idp", "list_user_pool_clients", UserPoolId=item.id, MaxResults=60, ttl=60
             )
             rows = [
-                f"{c.get('ClientName','')}  ({c.get('ClientId','')})"
+                f"{c.get('ClientName', '')}  ({c.get('ClientId', '')})"
                 for c in resp.get("UserPoolClients", [])
             ]
             return "User pool clients:\n" + ("\n".join(rows) if rows else "(none)")

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from fast_aws.executor import Executor, LoginRequired
 from fast_aws.screens.login import LoginScreen
@@ -36,7 +37,9 @@ async def show_login(app, exec: Executor) -> bool:
         app._login_pending = None
 
 
-async def retry_on_login(app, exec: Executor, fn: Callable[[], Awaitable[Any]], *args: Any, **kwargs: Any):
+async def retry_on_login(
+    app, exec: Executor, fn: Callable[[], Awaitable[Any]], *args: Any, **kwargs: Any
+):
     """Run an async call; if an SSO login is required, run it and retry once."""
     try:
         return await fn(*args, **kwargs)

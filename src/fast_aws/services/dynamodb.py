@@ -45,7 +45,15 @@ class DynamoDBService(ResourceService):
                     )
                 except ClientError:
                     items.append(
-                        Item(self.key, name, name, (name, "?", "?", "?"), kind="table", is_dir=True, payload={"TableName": name})
+                        Item(
+                            self.key,
+                            name,
+                            name,
+                            (name, "?", "?", "?"),
+                            kind="table",
+                            is_dir=True,
+                            payload={"TableName": name},
+                        )
                     )
             return Page(["Table", "Status", "Size", "Items"], items)
 

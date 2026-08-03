@@ -25,9 +25,33 @@ class IAMService(ResourceService):
             return Page(
                 ["Type"],
                 [
-                    Item(self.key, USERS_DIR, "Users", ("Users",), kind="dir", is_dir=True, payload={}),
-                    Item(self.key, ROLES_DIR, "Roles", ("Roles",), kind="dir", is_dir=True, payload={}),
-                    Item(self.key, POLICIES_DIR, "Policies (customer)", ("Policies (customer)",), kind="dir", is_dir=True, payload={}),
+                    Item(
+                        self.key,
+                        USERS_DIR,
+                        "Users",
+                        ("Users",),
+                        kind="dir",
+                        is_dir=True,
+                        payload={},
+                    ),
+                    Item(
+                        self.key,
+                        ROLES_DIR,
+                        "Roles",
+                        ("Roles",),
+                        kind="dir",
+                        is_dir=True,
+                        payload={},
+                    ),
+                    Item(
+                        self.key,
+                        POLICIES_DIR,
+                        "Policies (customer)",
+                        ("Policies (customer)",),
+                        kind="dir",
+                        is_dir=True,
+                        payload={},
+                    ),
                 ],
             )
 
@@ -99,7 +123,11 @@ class IAMService(ResourceService):
                             principals.add(x.split(":")[1].lower())
                         elif isinstance(x, str):
                             principals.add(x.lower())
-            services |= {p for p in principals if p.endswith(".amazonaws.com") or p.endswith(".amazonaws.com.cn")}
+            services |= {
+                p
+                for p in principals
+                if p.endswith(".amazonaws.com") or p.endswith(".amazonaws.com.cn")
+            }
             trust = ", ".join(sorted(services)) or ", ".join(sorted(principals)) or "—"
             return "\n".join(
                 p
@@ -107,13 +135,15 @@ class IAMService(ResourceService):
                     f"[#94a3b8]Role:[/] {d.get('RoleName', item.label)}",
                     f"[#94a3b8]Path:[/] {d.get('Path', '/')}",
                     f"[#94a3b8]Created:[/] {fmt_time(d.get('CreateDate'))}",
-                    f"[#94a3b8]Max session:[/] {d.get('MaxSessionDuration', '')} s" if d.get("MaxSessionDuration") else None,
+                    f"[#94a3b8]Max session:[/] {d.get('MaxSessionDuration', '')} s"
+                    if d.get("MaxSessionDuration")
+                    else None,
                     f"[#94a3b8]Trusted:[/] {truncate(trust, 60)}",
                 ]
                 if p
             )
         if item.kind == "user":
-            groups = (d.get("GroupList") or d.get("Groups") or [])
+            groups = d.get("GroupList") or d.get("Groups") or []
             return "\n".join(
                 [
                     f"[#94a3b8]User:[/] {d.get('UserName', item.label)}",
@@ -138,11 +168,21 @@ class IAMService(ResourceService):
         out: list[Link] = []
         if item.kind == "role":
             try:
-                resp = await self.exec.call("iam", "list_attached_role_policies", RoleName=item.id, ttl=60)
+                resp = await self.exec.call(
+                    "iam", "list_attached_role_policies", RoleName=item.id, ttl=60
+                )
             except ClientError:
                 resp = {}
             for p in resp.get("AttachedPolicies", []):
-                out.append(Link("iam", f"Policy: {p.get('PolicyName', '')}", [POLICIES_DIR], p.get("PolicyName", ""), kind="policy"))
+                out.append(
+                    Link(
+                        "iam",
+                        f"Policy: {p.get('PolicyName', '')}",
+                        [POLICIES_DIR],
+                        p.get("PolicyName", ""),
+                        kind="policy",
+                    )
+                )
         if item.kind == "user":
             try:
                 resp = await self.exec.call("iam", "list_user_policies", UserName=item.id, ttl=60)
