@@ -14,6 +14,17 @@ POOLS_DIR = "__pools"
 IDENTITY_DIR = "__identity"
 
 
+def _lambda_trigger_label(value: Any) -> str | None:
+    """Short name from a LambdaConfig entry (ARN string or nested config dict)."""
+    if isinstance(value, str) and value:
+        return value.split(":")[-1]
+    if isinstance(value, dict):
+        arn = value.get("LambdaArn") or value.get("KMSKeyID") or ""
+        if isinstance(arn, str) and arn:
+            return arn.split(":")[-1]
+    return None
+
+
 class CognitoService(ResourceService):
     key = "cognito"
     name = "Cognito"
@@ -99,7 +110,14 @@ class CognitoService(ResourceService):
         d = detail if isinstance(detail, dict) else {}
         if item.kind == "user_pool":
             triggers = d.get("LambdaConfig") or {}
-            trig = ", ".join(f"{k}: {v.split(':')[-1]}" for k, v in triggers.items()) or "none"
+            trig = (
+                ", ".join(
+                    f"{k}: {label}"
+                    for k, v in triggers.items()
+                    if (label := _lambda_trigger_label(v))
+                )
+                or "none"
+            )
             return kv_block(
                 [
                     ("Name", d.get("Name", item.label)),
@@ -142,8 +160,9 @@ class CognitoService(ResourceService):
                 parts.append(
                     kv_block(
                         [
-                            (k, v.split(":")[-1] if isinstance(v, str) else v)
+                            (k, label)
                             for k, v in triggers.items()
+                            if (label := _lambda_trigger_label(v))
                         ]
                     )
                 )
@@ -193,9 +212,9 @@ class CognitoService(ResourceService):
                 cfg = d.get("UserPool", {}).get("LambdaConfig", {}) or {}
             except ClientError:
                 cfg = {}
-            for trigger, arn in cfg.items():
-                if arn:
-                    fn = arn.split(":")[-1]
+            for trigger, value in cfg.items():
+                fn = _lambda_trigger_label(value)
+                if fn:
                     out.append(Link("lambda", f"Trigger {trigger}: {fn}", [], fn, kind="lambda"))
         if item.kind == "identity_pool":
             try:
