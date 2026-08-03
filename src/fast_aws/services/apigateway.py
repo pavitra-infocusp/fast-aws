@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any
 
 from botocore.exceptions import ClientError
-from rich.text import Text
 
 from fast_aws.fmt import (
     describe_fallback,
@@ -16,13 +15,14 @@ from fast_aws.fmt import (
     kv,
     kv_block,
     section,
+    tree_label,
+    tree_prefix,
 )
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
 STAGES_DIR = "__stages"
 _DIR_LABELS = {STAGES_DIR: "Stages"}
-_GUIDE_STYLE = "#475569"
 
 
 def _lambda_from_uri(uri: str) -> str | None:
@@ -33,21 +33,6 @@ def _lambda_from_uri(uri: str) -> str | None:
     if ":function:" in seg:
         return seg.split(":function:", 1)[1].split(":", 1)[0]
     return seg.split(":")[-1]
-
-
-def _make_prefix(continues: list[bool], is_last: bool) -> str:
-    """Build a box-drawing indent guide for one tree row."""
-    parts = ["│  " if c else "   " for c in continues]
-    parts.append("└─ " if is_last else "├─ ")
-    return "".join(parts)
-
-
-def _path_cell(prefix: str, name: str) -> Text:
-    text = Text()
-    if prefix:
-        text.append(prefix, style=_GUIDE_STYLE)
-    text.append(name)
-    return text
 
 
 def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item]:
@@ -76,7 +61,7 @@ def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item
             prefix = ""
             next_continues: list[bool] = []
         else:
-            prefix = _make_prefix(continues, is_last)
+            prefix = tree_prefix(continues, is_last)
             next_continues = continues + [not is_last]
 
         items.append(
@@ -84,7 +69,7 @@ def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item
                 "apigateway",
                 rid,
                 path,
-                (_path_cell(prefix, name), "path"),
+                (tree_label(prefix, name), "path"),
                 kind="resource",
                 payload={"api_id": api, **r},
             )
@@ -99,7 +84,7 @@ def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item
                     f"{method.upper()} {path}",
                     (
                         fmt_http_method(
-                            method, prefix=_make_prefix(next_continues, last_under)
+                            method, prefix=tree_prefix(next_continues, last_under)
                         ),
                         "method",
                     ),
@@ -130,6 +115,7 @@ def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item
             bare=len(roots) == 1,
         )
     return items
+
 
 class ApiGatewayService(ResourceService):
     key = "apigateway"

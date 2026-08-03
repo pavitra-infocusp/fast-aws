@@ -1,4 +1,4 @@
-"""S3 service: buckets and prefix-based object browsing."""
+"""S3 service: buckets and nested object-tree browsing."""
 
 from __future__ import annotations
 
@@ -14,10 +14,118 @@ from fast_aws.fmt import (
     fmt_time,
     kv_block,
     section,
+    tree_label,
+    tree_prefix,
     truncate,
 )
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
+
+_FOLDER_STYLE = "bold #7dd3fc"
+
+
+class _Node:
+    __slots__ = ("name", "kids", "obj", "full_key")
+
+    def __init__(self, name: str):
+        self.name = name
+        self.kids: dict[str, _Node] = {}
+        self.obj: dict[str, Any] | None = None
+        self.full_key = ""
+
+
+def _insert_key(root: _Node, obj: dict[str, Any], *, base_prefix: str) -> None:
+    key = obj.get("Key", "")
+    if not key or key == base_prefix:
+        return
+    rel = key[len(base_prefix) :] if base_prefix and key.startswith(base_prefix) else key
+    if not rel:
+        return
+    parts = [p for p in rel.split("/") if p]
+    if not parts:
+        return
+    node = root
+    for i, part in enumerate(parts):
+        if part not in node.kids:
+            node.kids[part] = _Node(part)
+        node = node.kids[part]
+        node.full_key = base_prefix + "/".join(parts[: i + 1])
+        if i < len(parts) - 1:
+            node.full_key += "/"
+    if key.endswith("/"):
+        node.full_key = key
+        node.obj = obj
+    else:
+        node.full_key = key
+        node.obj = obj
+
+
+def _is_folder(node: _Node) -> bool:
+    return bool(node.kids) or bool(node.obj and str(node.obj.get("Key", "")).endswith("/"))
+
+
+def _object_tree_items(
+    bucket: str, objects: list[dict[str, Any]], *, base_prefix: str = ""
+) -> list[Item]:
+    """Build a nested file/folder tree with indent guides from flat object keys."""
+    root = _Node("")
+    for obj in objects:
+        _insert_key(root, obj, base_prefix=base_prefix)
+
+    items: list[Item] = []
+
+    def _sort_key(n: _Node) -> tuple[bool, str]:
+        return (_is_folder(n) is False, n.name.lower())
+
+    def emit(node: _Node, continues: list[bool], *, is_last: bool, bare: bool) -> None:
+        folder = _is_folder(node)
+        if bare:
+            prefix = ""
+            next_continues: list[bool] = []
+        else:
+            prefix = tree_prefix(continues, is_last)
+            next_continues = continues + [not is_last]
+
+        name = f"{node.name}/" if folder else node.name
+        if folder:
+            prefix_key = (
+                node.full_key if node.full_key.endswith("/") else f"{node.full_key}/"
+            )
+            items.append(
+                Item(
+                    "s3",
+                    prefix_key,
+                    prefix_key,
+                    (tree_label(prefix, name, style=_FOLDER_STYLE), "", ""),
+                    kind="prefix",
+                    payload={"Bucket": bucket, "Prefix": prefix_key},
+                )
+            )
+            kids = sorted(node.kids.values(), key=_sort_key)
+            for i, child in enumerate(kids):
+                emit(child, next_continues, is_last=i == len(kids) - 1, bare=False)
+            return
+
+        obj = node.obj or {}
+        items.append(
+            Item(
+                "s3",
+                node.full_key,
+                node.full_key,
+                (
+                    tree_label(prefix, name),
+                    fmt_bytes(obj.get("Size", 0)),
+                    fmt_time(obj.get("LastModified")),
+                ),
+                kind="object",
+                payload={"Bucket": bucket, **obj},
+            )
+        )
+
+    top = sorted(root.kids.values(), key=_sort_key)
+    for i, node in enumerate(top):
+        emit(node, [], is_last=i == len(top) - 1, bare=len(top) == 1)
+    return items
 
 
 class S3Service(ResourceService):
@@ -45,37 +153,12 @@ class S3Service(ResourceService):
         bucket = path[0]
         prefix = path[1] if len(path) > 1 else ""
         resp = await self.exec.call(
-            "s3", "list_objects_v2", Bucket=bucket, Prefix=prefix, Delimiter="/", MaxKeys=1000
+            "s3", "list_objects_v2", Bucket=bucket, Prefix=prefix, MaxKeys=1000
         )
-        items: list[Item] = []
-        for p in resp.get("CommonPrefixes", []):
-            pre = p["Prefix"]
-            items.append(
-                Item(
-                    self.key,
-                    pre,
-                    pre,
-                    (pre, "", ""),
-                    kind="prefix",
-                    is_dir=True,
-                    payload={"Bucket": bucket, "Prefix": pre},
-                )
-            )
-        for o in resp.get("Contents", []):
-            key = o["Key"]
-            items.append(
-                Item(
-                    self.key,
-                    key,
-                    key,
-                    (key, fmt_bytes(o.get("Size", 0)), fmt_time(o.get("LastModified"))),
-                    kind="object",
-                    is_dir=False,
-                    payload={"Bucket": bucket, **o},
-                )
-            )
-        items.sort(key=lambda i: (not i.is_dir, i.label.lower()))
-        return Page(["Key", "Size", "Last modified"], items)
+        return Page(
+            ["Key", "Size", "Last modified"],
+            _object_tree_items(bucket, resp.get("Contents", []), base_prefix=prefix),
+        )
 
     async def detail(self, item: Item) -> dict:
         if item.kind == "object":
@@ -133,6 +216,13 @@ class S3Service(ResourceService):
                     ("Bucket", item.label),
                     ("Region", d.get("Region") or "(default)"),
                     ("Created", fmt_time(d.get("CreationDate"))),
+                ]
+            )
+        if item.kind == "prefix":
+            return kv_block(
+                [
+                    ("Bucket", d.get("Bucket", "")),
+                    ("Prefix", d.get("Prefix", item.label)),
                 ]
             )
         return describe_fallback(d)

@@ -39,11 +39,25 @@ def http_method_markup(method: str) -> str:
 def fmt_http_method(method: str, *, prefix: str = "", indent: str = "") -> Text:
     """Colored HTTP verb for DataTable cells; ``prefix`` holds tree guides."""
     m = method.upper()
+    return tree_label(prefix or indent, m, style=f"bold {http_method_color(m)}")
+
+
+TREE_GUIDE_STYLE = "#475569"
+
+
+def tree_prefix(continues: list[bool], is_last: bool) -> str:
+    """Box-drawing indent guide for one nested-tree row."""
+    parts = ["│  " if c else "   " for c in continues]
+    parts.append("└─ " if is_last else "├─ ")
+    return "".join(parts)
+
+
+def tree_label(prefix: str, name: str, *, style: str | None = None) -> Text:
+    """Label cell with a muted indent guide and optional label style."""
     text = Text()
-    guide = prefix or indent
-    if guide:
-        text.append(guide, style="#475569")
-    text.append(m, style=f"bold {http_method_color(m)}")
+    if prefix:
+        text.append(prefix, style=TREE_GUIDE_STYLE)
+    text.append(name, style=style) if style else text.append(name)
     return text
 
 

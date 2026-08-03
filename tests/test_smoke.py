@@ -16,9 +16,17 @@ def _obj(extra: dict | None = None) -> dict:
             "Buckets": [{"Name": "demo-bucket", "CreationDate": datetime(2024, 1, 1, tzinfo=UTC)}]
         },
         "list_objects_v2": {
-            "CommonPrefixes": [{"Prefix": "logs/"}],
             "Contents": [
-                {"Key": "app.log", "Size": 2048, "LastModified": datetime(2024, 2, 1, tzinfo=UTC)}
+                {
+                    "Key": "app.log",
+                    "Size": 2048,
+                    "LastModified": datetime(2024, 2, 1, tzinfo=UTC),
+                },
+                {
+                    "Key": "logs/error.log",
+                    "Size": 512,
+                    "LastModified": datetime(2024, 2, 2, tzinfo=UTC),
+                },
             ],
         },
         "get_bucket_location": {"LocationConstraint": "us-east-1"},
@@ -183,20 +191,22 @@ async def test_browse_s3_drilldown(stub_call):
         assert str(app.screen.query_one("#breadcrumb").content)  # breadcrumb set
         assert table.row_count == 1  # one bucket
 
-        # drill into bucket
+        # drill into bucket → nested tree: app.log, logs/, └─ error.log
         await pilot.press("enter")
         await settle(pilot)
-        assert table.row_count == 2  # logs/ prefix + app.log
-        # drill into prefix (select row 0 = logs/)
-        table.move_cursor(row=0)
+        assert table.row_count == 3
+        # open object detail for app.log (folders sort first: logs/, error.log, app.log)
+        table.move_cursor(row=2)
         await settle(pilot)
         await pilot.press("enter")
         await settle(pilot)
-        assert "logs/" in str(app.screen.query_one("#breadcrumb").content)
-        # back out
+        assert app.screen.__class__.__name__ == "ResultScreen"
         await pilot.press("escape")
-        await pilot.pause()
-        assert str(app.screen.query_one("#breadcrumb").content)
+        await settle(pilot)
+        # back out of bucket
+        await pilot.press("escape")
+        await settle(pilot)
+        assert table.row_count == 1  # bucket list again
 
 
 @pytest.mark.asyncio
@@ -300,10 +310,10 @@ async def test_filter_and_back(stub_call):
     async with app.run_test(size=(160, 50)) as pilot:
         await settle(pilot)
         table = app.screen.query_one("#table", DataTable)
-        # drill into bucket → 2 rows (logs/ + app.log)
+        # drill into bucket → nested tree: app.log, logs/, └─ error.log
         await pilot.press("enter")
         await settle(pilot)
-        assert table.row_count == 2
+        assert table.row_count == 3
         # filter for the object
         await pilot.press("/")
         await settle(pilot)
@@ -313,7 +323,7 @@ async def test_filter_and_back(stub_call):
         # esc clears filter and returns focus to table
         await pilot.press("escape")
         await settle(pilot)
-        assert table.row_count == 2
+        assert table.row_count == 3
         # back out of bucket
         await pilot.press("escape")
         await settle(pilot)
