@@ -169,10 +169,19 @@ class BrowseScreen(Screen[None]):
         svc = self._services[self._loc.service_key]
         parts = [f"[bold #7dd3fc]{svc.icon} {svc.name}[/]"]
         for seg in self._loc.path:
-            parts.append(f"[dim]/[/][#94a3b8]{truncate(seg, 40)}[/]")
+            label = svc.path_label(seg)
+            parts.append(f"[dim]/[/][#94a3b8]{truncate(label, 40)}[/]")
         if self._current is not None and self._current.label:
             last = self._loc.path[-1] if self._loc.path else None
-            if not (self._current.is_dir and self._current.label == last):
+            last_label = svc.path_label(last) if last is not None else None
+            if not (
+                self._current.is_dir
+                and (
+                    self._current.label == last
+                    or self._current.label == last_label
+                    or self._current.id == last
+                )
+            ):
                 parts.append(f"[dim]▸[/][#e2e8f0]{truncate(self._current.label, 40)}[/]")
         self.query_one("#breadcrumb", Static).update("  ".join(parts))
 

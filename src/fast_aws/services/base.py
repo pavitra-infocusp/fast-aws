@@ -40,6 +40,10 @@ class ResourceService:
     async def run_action(self, action_id: str, item: Item) -> str:
         return f"Action '{action_id}' is not implemented for {self.name}"
 
+    def path_label(self, segment: str) -> str:
+        """Human label for a path segment in the breadcrumb."""
+        return segment
+
     def filter(self, items: list[Item], query: str) -> list[Item]:
         q = query.strip().lower()
         if not q:
