@@ -15,7 +15,7 @@ from fast_aws.models import Action, Item, Link, Location, Page
 from fast_aws.screens.palette import PaletteScreen
 from fast_aws.screens.profile_picker import ProfilePicker
 from fast_aws.screens.tail import TailScreen
-from fast_aws.services import SIDEBAR, build_services
+from fast_aws.services import SIDEBAR, build_services, service_root
 from fast_aws.services.base import _pad
 from fast_aws.ui.flow import retry_on_login
 from fast_aws.ui.widgets import (
@@ -382,12 +382,32 @@ class BrowseScreen(Screen[None]):
                 self._load_detail(self._current)
 
     def action_switch_profile(self) -> None:
-        self.app.switch_screen(ProfilePicker())
+        self.app.push_screen(ProfilePicker(current=self.app.profile), self._on_profile_picked)
+
+    def _on_profile_picked(self, profile: str | None) -> None:
+        if profile is None:
+            return
+        # The old executor (and everything loaded through it) belongs to the
+        # previous account, so rebuild and restart at the service root.
+        self._services = build_services(self.app.executor)
+        self._history.clear()
+        self._refresh_topbar()
+        self.notify(f"Profile: {profile}", timeout=3)
+        key = self._loc.service_key if self._loc else SIDEBAR[0][0]
+        self._navigate(service_root(key), push_history=False)
 
     def action_switch_service(self) -> None:
         from fast_aws.screens.service_picker import ServicePicker
 
-        self.app.switch_screen(ServicePicker())
+        current = self._loc.service_key if self._loc else None
+        self.app.push_screen(
+            ServicePicker(current=current, cancellable=self._loc is not None),
+            self._on_service_picked,
+        )
+
+    def _on_service_picked(self, key: str | None) -> None:
+        if key is not None:
+            self._navigate(service_root(key))
 
     def action_palette(self) -> None:
         self.app.push_screen(PaletteScreen(self._palette_entries()), self._on_palette)

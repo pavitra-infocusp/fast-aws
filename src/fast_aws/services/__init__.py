@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fast_aws.executor import Executor
+from fast_aws.models import Location
 from fast_aws.services import (  # noqa: F401
     apigateway,
     cloudwatch,
@@ -39,6 +40,12 @@ SIDEBAR: list[tuple[str, list[str], str]] = [
     ("iam", [], "IAM"),
     ("logs", [], "CloudWatch Logs"),
 ]
+
+
+def service_root(key: str) -> Location:
+    """Location of a service's top level, as listed in the picker."""
+    service_key, path, label = next(entry for entry in SIDEBAR if entry[0] == key)
+    return Location(service_key, path, label=label)
 
 
 def build_services(exec: Executor) -> dict[str, object]:

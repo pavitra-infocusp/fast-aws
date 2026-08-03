@@ -4,53 +4,57 @@ from __future__ import annotations
 
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container, VerticalScroll
-from textual.screen import Screen
+from textual.containers import VerticalScroll
 from textual.widgets import Label, ListItem, ListView, Static
 
-from fast_aws.models import Location
 from fast_aws.services import SIDEBAR
-from fast_aws.ui.widgets import icon_for
-
-CSS = """
-#service-screen { align: center middle; height: 100%; }
-#service-dialog {
-    width: 64; max-width: 92%; max-height: 80%;
-    background: #151b23; border: tall #2f3a48; padding: 1 2;
-}
-#services-pick { margin: 1 0 0 0; height: auto; max-height: 24; }
-"""
+from fast_aws.ui.widgets import BackdropDismissModal, icon_for
 
 
-class ServicePicker(Screen[None]):
+class ServicePicker(BackdropDismissModal[str | None]):
+    """Pick a service; dismisses with its key, or None when cancelled."""
+
     BINDINGS = [
-        Binding("escape", "quit_app", "Quit"),
-        Binding("q", "quit_app", "Quit"),
+        Binding("escape", "cancel", "Cancel"),
+        Binding("q", "cancel", "Cancel"),
     ]
 
-    CSS = CSS
+    def __init__(self, current: str | None = None, *, cancellable: bool = True):
+        super().__init__()
+        self._current = current
+        self._cancellable = cancellable
+
+    def _allow_backdrop_dismiss(self) -> bool:
+        return self._cancellable
 
     def compose(self) -> ComposeResult:
-        with Container(id="service-screen"), VerticalScroll(id="service-dialog"):
+        keys = [key for key, _path, _label in SIDEBAR]
+        items = [
+            ListItem(
+                Label(f"{'●' if key == self._current else ' '} {icon_for(key)}  {label}"),
+                classes="current" if key == self._current else "",
+            )
+            for key, _path, label in SIDEBAR
+        ]
+        index = keys.index(self._current) if self._current in keys else 0
+        hint = "Esc to go back" if self._cancellable else "Esc to quit"
+
+        with VerticalScroll(id="service-dialog", classes="dialog"):
             yield Static("Select a service", classes="dialog-title")
             yield Static(id="service-note", classes="dialog-note")
-            yield ListView(id="services-pick")
+            yield ListView(*items, initial_index=index, id="services-pick")
+            yield Static(f"Enter to open · {hint}", classes="dialog-note")
 
     def on_mount(self) -> None:
         app = self.app
-        note = f"{app.profile} · {app.region}"
-        self.query_one("#service-note", Static).update(note)
-
-        lv = self.query_one("#services-pick", ListView)
-        for key, _path, label in SIDEBAR:
-            lv.append(ListItem(Label(f"{icon_for(key)}  {label}")))
-        lv.focus()
+        self.query_one("#service-note", Static).update(f"{app.profile} · {app.region}")
+        self.query_one("#services-pick", ListView).focus()
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
-        key, path, label = SIDEBAR[event.index]
-        from fast_aws.screens.browse import BrowseScreen
+        self.dismiss(SIDEBAR[event.index][0])
 
-        self.app.switch_screen(BrowseScreen(initial=Location(key, path, label=label)))
-
-    def action_quit_app(self) -> None:
-        self.app.exit()
+    def action_cancel(self) -> None:
+        if self._cancellable:
+            self.dismiss(None)
+        else:
+            self.app.exit()

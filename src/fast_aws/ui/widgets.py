@@ -42,7 +42,13 @@ class BackdropDismissModal(ModalScreen[T], Generic[T]):
         """Value passed to dismiss() when the user clicks outside the dialog."""
         return None  # type: ignore[return-value]
 
+    def _allow_backdrop_dismiss(self) -> bool:
+        """False when the dialog must stay open, e.g. nothing to go back to."""
+        return True
+
     def on_click(self, event: events.Click) -> None:
+        if not self._allow_backdrop_dismiss():
+            return
         try:
             dialog = self.query_one(".dialog")
         except NoMatches:

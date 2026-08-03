@@ -66,19 +66,31 @@ class FastAwsApp(App[None]):
         elif profiles:
             from fast_aws.screens.profile_picker import ProfilePicker
 
-            self.push_screen(ProfilePicker())
+            # Nothing to fall back to at launch, so the picker can't be cancelled.
+            self.push_screen(ProfilePicker(cancellable=False), self._on_launch_profile)
         else:
             self.push_screen(NoConfigScreen())
 
     def _init_executor(self, profile: str | None, region: str | None) -> None:
         """Build the executor and show the service picker."""
-        from fast_aws.screens.service_picker import ServicePicker
-
         self.profile = profile or "default"
         self.region = resolve_region(self.profile, region)
         self.executor = Executor(self.profile, self.region, readonly=self.readonly)
-        picker = ServicePicker()
-        if self.screen.id == "_default":
-            self.push_screen(picker)
-        else:
-            self.switch_screen(picker)
+        self._pick_service()
+
+    def _on_launch_profile(self, profile: str | None) -> None:
+        if profile is not None:
+            self._pick_service()
+
+    def _pick_service(self) -> None:
+        from fast_aws.screens.service_picker import ServicePicker
+
+        self.push_screen(ServicePicker(cancellable=False), self._on_launch_service)
+
+    def _on_launch_service(self, key: str | None) -> None:
+        if key is None:
+            return
+        from fast_aws.screens.browse import BrowseScreen
+        from fast_aws.services import service_root
+
+        self.push_screen(BrowseScreen(initial=service_root(key)))

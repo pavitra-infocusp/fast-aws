@@ -363,6 +363,42 @@ async def test_palette_switch_service(stub_call):
 
 
 @pytest.mark.asyncio
+async def test_service_switcher_preselects_and_cancels(stub_call):
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await pick_service(pilot, index=1)  # Lambda
+        rows = app.screen.query_one("#table").row_count
+        await pilot.press("s")
+        await settle(pilot)
+        picker = app.screen
+        assert picker.__class__.__name__ == "ServicePicker"
+        # browse stays mounted behind the modal, so it shows through the backdrop
+        assert app.screen_stack[-2].__class__.__name__ == "BrowseScreen"
+        assert picker.query_one("#services-pick").index == 1  # current service
+        # backing out leaves the browse screen exactly as it was
+        await pilot.press("escape")
+        await settle(pilot)
+        assert app.screen.__class__.__name__ == "BrowseScreen"
+        assert app.screen.query_one("#table").row_count == rows
+
+
+@pytest.mark.asyncio
+async def test_profile_switcher_cancels_back_to_browse(stub_call):
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await pick_service(pilot)  # S3
+        await pilot.press("ctrl+a")
+        await settle(pilot)
+        assert app.screen.__class__.__name__ == "ProfilePicker"
+        assert app.screen_stack[-2].__class__.__name__ == "BrowseScreen"
+        await pilot.press("escape")
+        await settle(pilot)
+        assert app.screen.__class__.__name__ == "BrowseScreen"
+        assert app.profile == "default"
+        assert app.screen.query_one("#table").row_count == 1
+
+
+@pytest.mark.asyncio
 async def test_mode_toggle_readonly_default(stub_call):
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:

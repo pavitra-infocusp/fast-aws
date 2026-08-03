@@ -184,6 +184,22 @@ ModalScreen {
     padding: 1 0 0 0;
 }
 
+/* ---- pickers ----------------------------------------------------------- */
+#profile-dialog, #service-dialog {
+    width: 64;
+}
+#profiles, #services-pick {
+    margin: 1 0 0 0;
+    height: auto;
+    max-height: 24;
+}
+#profiles > ListItem.current, #services-pick > ListItem.current {
+    color: #7dd3fc;
+}
+#profile-status {
+    padding: 1 0 0 0;
+}
+
 #palette-input {
     margin: 0 0 1 0;
     border: round #2f3a48;
