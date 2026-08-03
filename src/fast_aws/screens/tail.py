@@ -47,9 +47,9 @@ class TailScreen(Screen[None]):
         yield Static("", id="tail-status")
 
     def on_mount(self) -> None:
-        self._worker = self.run_worker(self._poll(), name="log-tail", exclusive=True)
+        self._worker = self._poll()
 
-    @work(exclusive=False)
+    @work(name="log-tail", exclusive=True)
     async def _poll(self) -> None:
         log = self.query_one("#tail-log", RichLog)
         status = self.query_one("#tail-status", Static)

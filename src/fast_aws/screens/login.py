@@ -31,7 +31,7 @@ class LoginScreen(ModalScreen[str]):
             yield Static("", id="login-status", classes="dialog-note")
 
     def on_mount(self) -> None:
-        self.run_worker(self._run())
+        self._run()
 
     @work(exclusive=False)
     async def _run(self) -> None:
