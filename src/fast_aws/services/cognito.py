@@ -64,7 +64,7 @@ class CognitoService(ResourceService):
                     p.get("Name", ""),
                     (p.get("Name", ""), p.get("Id", ""), p.get("Status", "") or ""),
                     kind="user_pool",
-                    is_dir=True,
+                    is_dir=False,
                     payload=p,
                 )
                 for p in resp.get("UserPools", [])
@@ -80,7 +80,7 @@ class CognitoService(ResourceService):
                 p.get("IdentityPoolName", ""),
                 (p.get("IdentityPoolName", ""), p.get("IdentityPoolId", "") or ""),
                 kind="identity_pool",
-                is_dir=True,
+                is_dir=False,
                 payload=p,
             )
             for p in resp.get("IdentityPools", [])
