@@ -16,6 +16,7 @@ USERS_DIR = "__users"
 GROUPS_DIR = "__groups"
 CLIENTS_DIR = "__clients"
 PROVIDERS_DIR = "__providers"
+TRIGGERS_DIR = "__triggers"
 
 # Friendly breadcrumb / table labels for synthetic path segments.
 _DIR_LABELS = {
@@ -25,17 +26,25 @@ _DIR_LABELS = {
     GROUPS_DIR: "Groups",
     CLIENTS_DIR: "App clients",
     PROVIDERS_DIR: "Identity providers",
+    TRIGGERS_DIR: "Triggers",
 }
 
 
 def _lambda_trigger_label(value: Any) -> str | None:
     """Short name from a LambdaConfig entry (ARN string or nested config dict)."""
+    arn = _lambda_trigger_arn(value)
+    if arn:
+        return arn.split(":")[-1]
+    return None
+
+
+def _lambda_trigger_arn(value: Any) -> str | None:
     if isinstance(value, str) and value:
-        return value.split(":")[-1]
+        return value
     if isinstance(value, dict):
-        arn = value.get("LambdaArn") or value.get("KMSKeyID") or ""
+        arn = value.get("LambdaArn") or ""
         if isinstance(arn, str) and arn:
-            return arn.split(":")[-1]
+            return arn
     return None
 
 
@@ -127,6 +136,8 @@ class CognitoService(ResourceService):
             return await self._list_clients(pool_id)
         if section_id == PROVIDERS_DIR:
             return await self._list_providers(pool_id)
+        if section_id == TRIGGERS_DIR:
+            return await self._list_triggers(pool_id)
         return Page(["Value"], [])
 
     async def _list_user_pools(self) -> Page:
@@ -191,6 +202,15 @@ class CognitoService(ResourceService):
                     PROVIDERS_DIR,
                     "Identity providers",
                     ("Identity providers", "SAML / OIDC / social"),
+                    kind="dir",
+                    is_dir=True,
+                    payload=base,
+                ),
+                Item(
+                    self.key,
+                    TRIGGERS_DIR,
+                    "Triggers",
+                    ("Triggers", "Lambda trigger configuration"),
                     kind="dir",
                     is_dir=True,
                     payload=base,
@@ -285,6 +305,39 @@ class CognitoService(ResourceService):
             for p in resp.get("Providers", [])
         ]
         return Page(["Provider", "Type"], items)
+
+    async def _list_triggers(self, pool_id: str) -> Page:
+        try:
+            d = await self.exec.call(
+                "cognito-idp", "describe_user_pool", UserPoolId=pool_id, ttl=60
+            )
+            cfg = d.get("UserPool", {}).get("LambdaConfig", {}) or {}
+        except ClientError:
+            cfg = {}
+        items = []
+        for trigger, value in cfg.items():
+            fn = _lambda_trigger_label(value)
+            arn = _lambda_trigger_arn(value)
+            if not fn and not arn:
+                continue
+            items.append(
+                Item(
+                    self.key,
+                    trigger,
+                    trigger,
+                    (trigger, fn or "—"),
+                    kind="cognito_trigger",
+                    payload={
+                        "UserPoolId": pool_id,
+                        "Trigger": trigger,
+                        "Lambda": fn or "",
+                        "LambdaArn": arn or "",
+                        "Config": value,
+                    },
+                )
+            )
+        items.sort(key=lambda i: i.label.lower())
+        return Page(["Trigger", "Lambda"], items)
 
     async def _list_identity_pools(self) -> Page:
         resp = await self.exec.call(
@@ -386,14 +439,7 @@ class CognitoService(ResourceService):
         d = detail if isinstance(detail, dict) else {}
         if item.kind == "user_pool":
             triggers = d.get("LambdaConfig") or {}
-            trig = (
-                ", ".join(
-                    f"{k}: {label}"
-                    for k, v in triggers.items()
-                    if (label := _lambda_trigger_label(v))
-                )
-                or "none"
-            )
+            n_trig = sum(1 for v in triggers.values() if _lambda_trigger_label(v))
             return kv_block(
                 [
                     ("Name", d.get("Name", item.label)),
@@ -403,7 +449,7 @@ class CognitoService(ResourceService):
                     ("MFA", d.get("MfaConfiguration", "") or "—"),
                     ("Domain", d.get("Domain", "") or "—"),
                     ("Created", fmt_time(d.get("CreationDate"))),
-                    ("Lambda triggers", truncate(trig, 60)),
+                    ("Lambda triggers", str(n_trig) if n_trig else "none"),
                 ]
             )
         if item.kind == "cognito_user":
@@ -453,6 +499,15 @@ class CognitoService(ResourceService):
                     ("Modified", fmt_time(d.get("LastModifiedDate"))),
                 ]
             )
+        if item.kind == "cognito_trigger":
+            fn = d.get("Lambda") or _lambda_trigger_label(d.get("Config")) or "—"
+            return kv_block(
+                [
+                    ("Trigger", d.get("Trigger", item.label)),
+                    ("Lambda", fn),
+                    ("Pool", d.get("UserPoolId", "") or "—"),
+                ]
+            )
         if item.kind == "identity_pool":
             return kv_block(
                 [
@@ -480,6 +535,8 @@ class CognitoService(ResourceService):
             return self._client_body(item, d)
         if item.kind == "cognito_idp":
             return self._idp_body(item, d)
+        if item.kind == "cognito_trigger":
+            return self._trigger_body(item, d)
         if item.kind == "identity_pool":
             return self._identity_pool_body(item, d)
         return detail_fallback(d)
@@ -721,6 +778,23 @@ class CognitoService(ResourceService):
             parts.append(kv_block([(k, v) for k, v in sorted(mapping.items())]))
         return "\n".join(parts)
 
+    def _trigger_body(self, item: Item, d: dict) -> str:
+        cfg = d.get("Config")
+        arn = d.get("LambdaArn") or _lambda_trigger_arn(cfg) or "—"
+        fn = d.get("Lambda") or _lambda_trigger_label(cfg) or "—"
+        rows: list[tuple[str, Any]] = [
+            ("Trigger", d.get("Trigger", item.label)),
+            ("Lambda", fn),
+            ("ARN", arn),
+            ("Pool", d.get("UserPoolId", "") or "—"),
+        ]
+        if isinstance(cfg, dict):
+            for k, v in sorted(cfg.items()):
+                if k == "LambdaArn":
+                    continue
+                rows.append((k, truncate(str(v), 80)))
+        return kv_block(rows)
+
     def _identity_pool_body(self, item: Item, d: dict) -> str:
         parts = [
             kv_block(
@@ -758,23 +832,13 @@ class CognitoService(ResourceService):
     async def links(self, item: Item) -> list[Link]:
         out: list[Link] = []
         if item.kind == "user_pool":
-            try:
-                d = await self.exec.call(
-                    "cognito-idp", "describe_user_pool", UserPoolId=item.id, ttl=60
-                )
-                cfg = d.get("UserPool", {}).get("LambdaConfig", {}) or {}
-            except ClientError:
-                cfg = {}
-            for trigger, value in cfg.items():
-                fn = _lambda_trigger_label(value)
-                if fn:
-                    out.append(Link("lambda", f"Trigger {trigger}: {fn}", [], fn, kind="lambda"))
-            # Quick jumps into this pool's sections.
+            # Quick jumps into this pool's sections (triggers live under their own section).
             for seg, title in (
                 (USERS_DIR, "Users"),
                 (GROUPS_DIR, "Groups"),
                 (CLIENTS_DIR, "App clients"),
                 (PROVIDERS_DIR, "Identity providers"),
+                (TRIGGERS_DIR, "Triggers"),
             ):
                 out.append(
                     Link(
@@ -785,6 +849,11 @@ class CognitoService(ResourceService):
                         kind="dir",
                     )
                 )
+
+        if item.kind == "cognito_trigger":
+            fn = item.payload.get("Lambda") or _lambda_trigger_label(item.payload.get("Config"))
+            if fn:
+                out.append(Link("lambda", f"Lambda: {fn}", [], fn, kind="lambda"))
 
         if item.kind == "cognito_user":
             pool_id = item.payload.get("UserPoolId", "")
