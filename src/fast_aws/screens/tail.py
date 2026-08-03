@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import time
 
+from rich.console import Group
+from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -12,7 +14,7 @@ from textual.screen import Screen
 from textual.widgets import RichLog, Static
 
 from fast_aws.executor import Executor
-from fast_aws.fmt import fmt_time_ms, truncate
+from fast_aws.fmt import fmt_time_ms, log_message, truncate
 
 TAIL_WINDOW_MS = 30_000
 POLL_SECONDS = 2.0
@@ -80,7 +82,7 @@ class TailScreen(Screen[None]):
                     continue
                 last = ts + 1
                 msg = e.get("message", "")
-                log.write(f"{fmt_time_ms(ts)}  {msg}")
+                log.write(Group(Text(f"{fmt_time_ms(ts)}  "), log_message(str(msg))))
                 count += 1
             status.update(
                 f"tail {self._group} · {count} new · {'⏸ paused' if self._paused else 'live'}"

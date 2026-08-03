@@ -9,6 +9,10 @@ import subprocess
 from datetime import UTC, datetime
 from typing import Any
 
+from rich.console import Group, RenderableType
+from rich.json import JSON
+from rich.text import Text
+
 
 def fmt_bytes(n: int | None) -> str:
     n = n or 0
@@ -88,6 +92,42 @@ def pretty(obj: Any, max_len: int = 8000) -> str:
     if len(text) > max_len:
         text = text[: max_len - 3] + "..."
     return text
+
+
+def try_json(text: str) -> JSON | None:
+    """Return a highlighted Rich ``JSON`` renderable when ``text`` is JSON."""
+    raw = (text or "").strip()
+    if not raw:
+        return None
+    try:
+        return JSON(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def log_message(text: str) -> RenderableType:
+    """Log body: pretty highlighted JSON when possible, otherwise plain text."""
+    raw = text or ""
+    stripped = raw.strip()
+    if not stripped:
+        return Text("(empty)")
+
+    highlighted = try_json(stripped)
+    if highlighted is not None:
+        return highlighted
+
+    # Embedded JSON after a non-JSON prefix (common in Lambda lines).
+    for opener in ("{", "["):
+        i = stripped.find(opener)
+        if i <= 0:
+            continue
+        embedded = try_json(stripped[i:])
+        if embedded is None:
+            continue
+        prefix = stripped[:i].rstrip()
+        return Group(Text(prefix), embedded) if prefix else embedded
+
+    return Text(raw)
 
 
 def _scalar(value: Any, max_len: int) -> str:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Generic, TypeVar
 
+from rich.console import RenderableType
 from textual import events
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -90,11 +91,12 @@ class ResultScreen(BackdropDismissModal[None]):
         Binding("b", "dismiss", "Close"),
     ]
 
-    def __init__(self, title: str, body: str, *, markup: bool = False):
+    def __init__(self, title: str, body: str | RenderableType, *, markup: bool = False):
         super().__init__()
         self._title = title
         self._body = body
-        self._markup = markup
+        # Rich renderables carry their own styles; never parse them as markup.
+        self._markup = markup if isinstance(body, str) else False
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(classes="dialog"):

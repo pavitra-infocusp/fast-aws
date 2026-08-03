@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from rich.console import Group, RenderableType
+from rich.text import Text
+
 from fast_aws.fmt import (
     describe_fallback,
     detail_fallback,
@@ -11,6 +14,7 @@ from fast_aws.fmt import (
     fmt_time_ms,
     kv,
     kv_block,
+    log_message,
     section,
     truncate,
 )
@@ -132,7 +136,7 @@ class CloudWatchService(ResourceService):
             )
         return describe_fallback(d)
 
-    def detail_body(self, item: Item, detail: Any) -> str:
+    def detail_body(self, item: Item, detail: Any) -> str | RenderableType:
         d = detail if isinstance(detail, dict) else {}
         if item.kind == "log_group":
             ret = d.get("retentionInDays")
@@ -161,15 +165,16 @@ class CloudWatchService(ResourceService):
             )
         if item.kind == "log_event":
             msg = d.get("message", "") or ""
-            safe = str(msg).replace("[", "\\[")
-            return "\n".join(
-                [
-                    kv("Timestamp", fmt_time_ms(d.get("timestamp"))),
-                    kv("Ingestion", fmt_time_ms(d.get("ingestionTime"))),
-                    section("Message"),
-                    safe or "(empty)",
-                ]
+            header = Text.from_markup(
+                "\n".join(
+                    [
+                        kv("Timestamp", fmt_time_ms(d.get("timestamp"))),
+                        kv("Ingestion", fmt_time_ms(d.get("ingestionTime"))),
+                        section("Message"),
+                    ]
+                )
             )
+            return Group(header, log_message(str(msg)))
         return detail_fallback(d)
 
     def actions(self, item: Item) -> list[Action]:

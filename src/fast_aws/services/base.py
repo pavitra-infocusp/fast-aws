@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from rich.console import RenderableType
+
 from fast_aws.executor import Executor
 from fast_aws.fmt import describe_fallback, detail_fallback
 from fast_aws.models import Action, Item, Link, Page
@@ -27,7 +29,7 @@ class ResourceService:
         """Human-meaningful summary for the inspector; overridden per service."""
         return describe_fallback(detail)
 
-    def detail_body(self, item: Item, detail: Any) -> str:
+    def detail_body(self, item: Item, detail: Any) -> str | RenderableType:
         """Rich modal body for Enter; default is humanized kv, not raw JSON."""
         return detail_fallback(detail)
 
