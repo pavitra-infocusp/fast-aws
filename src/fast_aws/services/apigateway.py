@@ -6,7 +6,7 @@ from typing import Any
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import describe_fallback, detail_fallback, kv_block, section
+from fast_aws.fmt import describe_fallback, detail_fallback, fmt_time, kv_block, section
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -36,7 +36,7 @@ class ApiGatewayService(ResourceService):
                     self.key,
                     a.get("id", ""),
                     a.get("name", a.get("id", "")),
-                    (a.get("name", a.get("id", "")), a.get("createdDate", "") or ""),
+                    (a.get("name", a.get("id", "")), fmt_time(a.get("createdDate"))),
                     kind="api",
                     is_dir=True,
                     payload=a,
@@ -86,7 +86,7 @@ class ApiGatewayService(ResourceService):
                 (
                     s.get("stageName", ""),
                     s.get("deploymentId", "") or "",
-                    s.get("lastUpdatedDate", "") or "",
+                    fmt_time(s.get("lastUpdatedDate")),
                 ),
                 kind="stage",
                 payload=s,
@@ -116,7 +116,7 @@ class ApiGatewayService(ResourceService):
                 [
                     ("Name", d.get("name", item.label)),
                     ("ID", d.get("id", "") or "—"),
-                    ("Created", d.get("createdDate", "") or "—"),
+                    ("Created", fmt_time(d.get("createdDate")) or "—"),
                 ]
             )
         if item.kind == "resource":
@@ -133,7 +133,7 @@ class ApiGatewayService(ResourceService):
                 [
                     ("Stage", d.get("stageName", item.label)),
                     ("Deployment", d.get("deploymentId", "") or "—"),
-                    ("Updated", d.get("lastUpdatedDate", "") or "—"),
+                    ("Updated", fmt_time(d.get("lastUpdatedDate")) or "—"),
                 ]
             )
         return describe_fallback(d)
@@ -146,7 +146,7 @@ class ApiGatewayService(ResourceService):
                     ("Name", d.get("name", item.label)),
                     ("ID", d.get("id", "") or "—"),
                     ("Description", d.get("description", "") or "—"),
-                    ("Created", d.get("createdDate", "") or "—"),
+                    ("Created", fmt_time(d.get("createdDate")) or "—"),
                     ("Version", d.get("version", "") or "—"),
                     (
                         "Endpoint",
@@ -192,8 +192,8 @@ class ApiGatewayService(ResourceService):
                         ("Stage", d.get("stageName", item.label)),
                         ("Deployment", d.get("deploymentId", "") or "—"),
                         ("Description", d.get("description", "") or "—"),
-                        ("Created", d.get("createdDate", "") or "—"),
-                        ("Updated", d.get("lastUpdatedDate", "") or "—"),
+                        ("Created", fmt_time(d.get("createdDate")) or "—"),
+                        ("Updated", fmt_time(d.get("lastUpdatedDate")) or "—"),
                         ("Tracing", "on" if (d.get("tracingEnabled")) else "off"),
                         ("Cache cluster", d.get("cacheClusterStatus", "") or "—"),
                     ]

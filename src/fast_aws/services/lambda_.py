@@ -8,7 +8,7 @@ from typing import Any
 from botocore.exceptions import ClientError
 
 from fast_aws.executor import LoginRequired
-from fast_aws.fmt import fmt_bytes, kv_block, section, truncate
+from fast_aws.fmt import fmt_bytes, fmt_time, kv_block, section, truncate
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -29,7 +29,7 @@ class LambdaService(ResourceService):
                     f.get("FunctionName", "") or "",
                     f.get("Runtime", "") or "",
                     f.get("State", "") or "",
-                    f.get("LastModified", "") or "",
+                    fmt_time(f.get("LastModified")),
                 ),
                 kind="function",
                 payload=f,
@@ -54,7 +54,7 @@ class LambdaService(ResourceService):
                 ("Name", cfg.get("FunctionName", item.label)),
                 ("Runtime", cfg.get("Runtime", "") or "—"),
                 ("State", cfg.get("State", "") or "—"),
-                ("Last modified", cfg.get("LastModified", "") or "—"),
+                ("Last modified", fmt_time(cfg.get("LastModified")) or "—"),
                 ("Handler", cfg.get("Handler", "") or "—"),
                 ("Memory", f"{cfg['MemorySize']} MB" if cfg.get("MemorySize") else None),
                 ("Timeout", f"{cfg['Timeout']} s" if cfg.get("Timeout") else None),
@@ -77,7 +77,7 @@ class LambdaService(ResourceService):
                     ("ARN", cfg.get("FunctionArn", "") or "—"),
                     ("Runtime", cfg.get("Runtime", "") or "—"),
                     ("State", cfg.get("State", "") or "—"),
-                    ("Last modified", cfg.get("LastModified", "") or "—"),
+                    ("Last modified", fmt_time(cfg.get("LastModified")) or "—"),
                     ("Handler", cfg.get("Handler", "") or "—"),
                     ("Memory", f"{cfg['MemorySize']} MB" if cfg.get("MemorySize") else "—"),
                     ("Timeout", f"{cfg['Timeout']} s" if cfg.get("Timeout") else "—"),

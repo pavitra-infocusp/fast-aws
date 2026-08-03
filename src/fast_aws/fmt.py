@@ -20,7 +20,7 @@ def fmt_bytes(n: int | None) -> str:
 
 
 def fmt_time(ts: Any, tz: bool = True) -> str:
-    """Render a datetime, epoch-ms int, or empty string."""
+    """Render a datetime, epoch-ms int, ISO string, or empty — always in local time."""
     if ts is None or ts == "":
         return ""
     if isinstance(ts, (int, float)):
@@ -31,13 +31,24 @@ def fmt_time(ts: Any, tz: bool = True) -> str:
         except OverflowError, OSError, ValueError:
             return str(ts)
     elif isinstance(ts, str):
-        return ts
+        text = ts.strip()
+        if not text:
+            return ""
+        try:
+            dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return ts
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
     else:
+        if not isinstance(ts, datetime):
+            return str(ts)
         dt = ts
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=UTC)
-    s = dt.astimezone().strftime("%Y-%m-%d %H:%M:%S")
-    return f"{s} {_tz_label(dt)}" if tz else s
+    local = dt.astimezone()
+    s = local.strftime("%Y-%m-%d %H:%M:%S")
+    return f"{s} {_tz_label(local)}" if tz else s
 
 
 def fmt_time_ms(ts: int | None) -> str:
