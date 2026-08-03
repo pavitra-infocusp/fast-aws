@@ -54,12 +54,17 @@ class ResourceService:
             i
             for i in items
             if q in i.label.lower()
-            or any(q in str(c).lower() for c in i.columns)
+            or any(q in _cell_text(c).lower() for c in i.columns)
             or q in str(i.payload).lower()
         ]
 
 
-def _pad(item: Item, ncols: int) -> list[str]:
+def _cell_text(cell: Any) -> str:
+    plain = getattr(cell, "plain", None)
+    return plain if isinstance(plain, str) else str(cell)
+
+
+def _pad(item: Item, ncols: int) -> list[Any]:
     cells = list(item.columns)
     while len(cells) < ncols:
         cells.append("")

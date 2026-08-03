@@ -13,7 +13,7 @@ class Item:
     service: str
     id: str
     label: str
-    columns: tuple[str, ...] = ()
+    columns: tuple[Any, ...] = ()
     kind: str = ""
     is_dir: bool = False
     payload: dict[str, Any] = field(default_factory=dict)

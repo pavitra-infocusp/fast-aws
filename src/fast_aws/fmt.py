@@ -13,6 +13,36 @@ from rich.console import Group, RenderableType
 from rich.json import JSON
 from rich.text import Text
 
+# Common HTTP verb colors (Postman / Insomnia-style cues).
+_HTTP_METHOD_COLORS = {
+    "GET": "#4ade80",
+    "POST": "#fbbf24",
+    "PUT": "#60a5fa",
+    "PATCH": "#c084fc",
+    "DELETE": "#f87171",
+    "OPTIONS": "#94a3b8",
+    "HEAD": "#94a3b8",
+    "ANY": "#94a3b8",
+}
+
+
+def http_method_color(method: str) -> str:
+    return _HTTP_METHOD_COLORS.get(method.upper(), "#e2e8f0")
+
+
+def http_method_markup(method: str) -> str:
+    """Colored HTTP verb for Textual markup strings."""
+    m = method.upper()
+    return f"[bold {http_method_color(m)}]{m}[/]"
+
+
+def fmt_http_method(method: str, *, indent: str = "") -> Text:
+    """Colored HTTP verb for DataTable cells."""
+    m = method.upper()
+    text = Text(indent)
+    text.append(m, style=f"bold {http_method_color(m)}")
+    return text
+
 
 def fmt_bytes(n: int | None) -> str:
     n = n or 0

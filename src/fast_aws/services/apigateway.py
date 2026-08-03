@@ -6,7 +6,16 @@ from typing import Any
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import describe_fallback, detail_fallback, fmt_time, kv_block, section
+from fast_aws.fmt import (
+    describe_fallback,
+    detail_fallback,
+    fmt_http_method,
+    fmt_time,
+    http_method_markup,
+    kv,
+    kv_block,
+    section,
+)
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -63,7 +72,7 @@ def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item
                         "apigateway",
                         f"{rid}:{method}",
                         f"{method.upper()} {path}",
-                        (f"{m_indent}{method.upper()}", "method"),
+                        (fmt_http_method(method, indent=m_indent), "method"),
                         kind="method",
                         payload={
                             "api_id": api,
@@ -181,22 +190,26 @@ class ApiGatewayService(ResourceService):
                 ]
             )
         if item.kind == "resource":
-            methods = "/".join(sorted((d.get("resourceMethods") or {}).keys())) or "—"
-            return kv_block(
+            methods = d.get("resourceMethods") or {}
+            method_labels = (
+                " ".join(http_method_markup(m) for m in sorted(methods)) or "—"
+            )
+            return "\n".join(
                 [
-                    ("Path", d.get("path", "/")),
-                    ("Methods", methods),
-                    ("ID", d.get("id", item.id)),
+                    kv("Path", d.get("path", "/")),
+                    f"[#94a3b8]Methods:[/] {method_labels}",
+                    kv("ID", d.get("id", item.id)),
                 ]
             )
         if item.kind == "method":
             integ = d.get("methodIntegration") or {}
-            return kv_block(
+            method = item.payload.get("http_method", "") or item.label
+            return "\n".join(
                 [
-                    ("Method", item.payload.get("http_method", "").upper() or item.label),
-                    ("Path", item.payload.get("path", "/") or "—"),
-                    ("Integration", integ.get("type", "") or "—"),
-                    ("URI", integ.get("uri", "") or "—"),
+                    f"[#94a3b8]Method:[/] {http_method_markup(method)}",
+                    kv("Path", item.payload.get("path", "/") or "—"),
+                    kv("Integration", integ.get("type", "") or "—"),
+                    kv("URI", integ.get("uri", "") or "—"),
                 ]
             )
         if item.kind == "stage":
@@ -228,13 +241,16 @@ class ApiGatewayService(ResourceService):
             )
         if item.kind == "resource":
             methods = d.get("resourceMethods") or {}
+            method_labels = (
+                " ".join(http_method_markup(m) for m in sorted(methods)) or "—"
+            )
             parts = [
-                kv_block(
+                "\n".join(
                     [
-                        ("Path", d.get("path", item.payload.get("path", "/"))),
-                        ("ID", d.get("id", item.id)),
-                        ("Parent", d.get("parentId", "") or "—"),
-                        ("Methods", "/".join(sorted(methods.keys())) or "—"),
+                        kv("Path", d.get("path", item.payload.get("path", "/"))),
+                        kv("ID", d.get("id", item.id)),
+                        kv("Parent", d.get("parentId", "") or "—"),
+                        f"[#94a3b8]Methods:[/] {method_labels}",
                     ]
                 )
             ]
@@ -242,32 +258,33 @@ class ApiGatewayService(ResourceService):
                 parts.append(section("Integrations"))
                 for method, conf in sorted(methods.items()):
                     if not isinstance(conf, dict):
-                        parts.append(kv_block([(method.upper(), "(no config)")]))
+                        parts.append(
+                            f"{http_method_markup(method)}  [#94a3b8](no config)[/]"
+                        )
                         continue
                     integ = conf.get("methodIntegration") or {}
-                    parts.append(
-                        kv_block(
-                            [
-                                (method.upper(), integ.get("type", "") or "—"),
-                                ("URI", integ.get("uri", "") or "—"),
-                                ("HTTP method", integ.get("httpMethod", "") or None),
-                            ]
-                        )
-                    )
+                    lines = [
+                        f"{http_method_markup(method)}  "
+                        f"{integ.get('type', '') or '—'}",
+                        kv("URI", integ.get("uri", "") or "—"),
+                    ]
+                    if integ.get("httpMethod"):
+                        lines.append(kv("HTTP method", integ.get("httpMethod")))
+                    parts.append("\n".join(lines))
             return "\n".join(parts)
         if item.kind == "method":
             integ = d.get("methodIntegration") or {}
             method = item.payload.get("http_method") or d.get("httpMethod") or ""
-            return kv_block(
+            return "\n".join(
                 [
-                    ("Method", method.upper()),
-                    ("Path", item.payload.get("path", "/") or "—"),
-                    ("Resource ID", item.payload.get("resource_id", "") or "—"),
-                    ("Authorization", d.get("authorizationType", "") or "—"),
-                    ("API key required", "yes" if d.get("apiKeyRequired") else "no"),
-                    ("Integration", integ.get("type", "") or "—"),
-                    ("Integration HTTP", integ.get("httpMethod", "") or "—"),
-                    ("URI", integ.get("uri", "") or "—"),
+                    f"[#94a3b8]Method:[/] {http_method_markup(method)}",
+                    kv("Path", item.payload.get("path", "/") or "—"),
+                    kv("Resource ID", item.payload.get("resource_id", "") or "—"),
+                    kv("Authorization", d.get("authorizationType", "") or "—"),
+                    kv("API key required", "yes" if d.get("apiKeyRequired") else "no"),
+                    kv("Integration", integ.get("type", "") or "—"),
+                    kv("Integration HTTP", integ.get("httpMethod", "") or "—"),
+                    kv("URI", integ.get("uri", "") or "—"),
                 ]
             )
         if item.kind == "stage":
