@@ -33,9 +33,12 @@ _DIR_LABELS = {
 def _lambda_trigger_label(value: Any) -> str | None:
     """Short name from a LambdaConfig entry (ARN string or nested config dict)."""
     arn = _lambda_trigger_arn(value)
-    if arn:
-        return arn.split(":")[-1]
-    return None
+    if not arn:
+        return None
+    # arn:...:function:name or arn:...:function:name:version|alias
+    if ":function:" in arn:
+        return arn.split(":function:", 1)[1].split(":", 1)[0]
+    return arn.split(":")[-1]
 
 
 def _lambda_trigger_arn(value: Any) -> str | None:

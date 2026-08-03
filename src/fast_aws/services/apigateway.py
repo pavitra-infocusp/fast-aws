@@ -17,6 +17,9 @@ def _lambda_from_uri(uri: str) -> str | None:
     if "lambda" not in uri or "functions/" not in uri:
         return None
     seg = uri.split("functions/")[-1].split("/")[0]
+    # arn:...:function:name or arn:...:function:name:version|alias
+    if ":function:" in seg:
+        return seg.split(":function:", 1)[1].split(":", 1)[0]
     return seg.split(":")[-1]
 
 
