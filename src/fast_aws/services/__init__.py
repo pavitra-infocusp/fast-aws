@@ -1,4 +1,4 @@
-"""Service registry: sidebar entries → (service key, initial nav path)."""
+"""Service registry: picker entries → (service key, initial nav path)."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ _SERVICE_CLASSES = [
     cloudwatch.CloudWatchService,
 ]
 
-# Sidebar entries: (service key, initial nav path, display label)
+# Service picker entries: (service key, initial nav path, display label)
 SIDEBAR: list[tuple[str, list[str], str]] = [
     ("s3", [], "S3"),
     ("lambda", [], "Lambda"),

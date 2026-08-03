@@ -41,7 +41,8 @@ output and Textual events.
 | Key       | Action                                  |
 | --------- | --------------------------------------- |
 | `Enter`   | Open / drill down                        |
-| `Esc`     | Back / close                            |
+| `Esc`     | Back / service picker / close           |
+| `s`       | Switch service                          |
 | `/` `f`   | Filter current list                     |
 | `l`       | Linked resources (jump)                 |
 | `a`       | Actions for selection                   |

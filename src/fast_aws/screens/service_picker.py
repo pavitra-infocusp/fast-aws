@@ -1,4 +1,4 @@
-"""Service picker — shown after profile auth, before browse."""
+"""Service picker — shown after profile auth and when switching services."""
 
 from __future__ import annotations
 

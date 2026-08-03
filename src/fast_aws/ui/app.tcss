@@ -19,21 +19,6 @@ Screen {
 #layout {
     height: 1fr;
 }
-#sidebar {
-    width: 24;
-    background: #10151c;
-    border-right: solid #232b36;
-    scrollbar-size: 1 1;
-}
-#sidebar-title {
-    color: #64748b;
-    text-style: bold;
-    padding: 1 1 0 1;
-}
-#services {
-    width: 100%;
-    margin: 1 0 0 0;
-}
 ListView > ListItem {
     padding: 0 1;
     height: 1;

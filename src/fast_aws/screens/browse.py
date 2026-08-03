@@ -1,4 +1,4 @@
-"""Main browse screen: sidebar, list, breadcrumb, inspector, relationships."""
+"""Main browse screen: list, breadcrumb, inspector, relationships."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import DataTable, Input, Label, ListItem, ListView, Static
+from textual.widgets import DataTable, Input, Static
 
 from fast_aws.executor import ReadonlyViolation
 from fast_aws.fmt import truncate
@@ -33,6 +33,7 @@ class BrowseScreen(Screen[None]):
         Binding("r", "refresh", "Refresh"),
         Binding("ctrl+e", "toggle_mode", "Mode"),
         Binding("ctrl+a", "switch_profile", "Profile"),
+        Binding("s", "switch_service", "Service"),
         Binding("escape", "back", "Back"),
         Binding("l", "links", "Links"),
         Binding("a", "actions", "Actions"),
@@ -64,7 +65,6 @@ class BrowseScreen(Screen[None]):
     def compose(self) -> ComposeResult:
         yield Static(id="topbar")
         with Horizontal(id="layout"):
-            yield Sidebar(id="sidebar")
             with Vertical(id="main"):
                 yield Static("", id="breadcrumb")
                 with Horizontal(id="filter-row", classes="hidden"):
@@ -86,20 +86,10 @@ class BrowseScreen(Screen[None]):
         self._services = build_services(self.app.executor)
         self._refresh_topbar()
 
-        lv = self.query_one("#services", ListView)
-        for key, _path, label in SIDEBAR:
-            lv.append(ListItem(Label(f"{icon_for(key)}  {label}")))
-
         if self._initial is not None:
-            for i, (key, _path, _label) in enumerate(SIDEBAR):
-                if key == self._initial.service_key:
-                    lv.index = i
-                    break
             self._navigate(self._initial, push_history=False)
         else:
-            # Idle until the user picks a service from the sidebar.
-            lv.focus()
-            self._set_status("Select a service to browse")
+            self.action_switch_service()
 
     def _refresh_topbar(self) -> None:
         exec = self.app.executor
@@ -281,7 +271,7 @@ class BrowseScreen(Screen[None]):
             self._loc = loc
             self._load(loc)
         else:
-            self.notify("At top level — Ctrl+A to switch profile", timeout=2)
+            self.action_switch_service()
 
     def action_links(self) -> None:
         if not self._current_links:
@@ -393,11 +383,17 @@ class BrowseScreen(Screen[None]):
     def action_switch_profile(self) -> None:
         self.app.switch_screen(ProfilePicker())
 
+    def action_switch_service(self) -> None:
+        from fast_aws.screens.service_picker import ServicePicker
+
+        self.app.switch_screen(ServicePicker())
+
     def action_palette(self) -> None:
         self.app.push_screen(PaletteScreen(self._palette_entries()), self._on_palette)
 
     def _palette_entries(self) -> list[tuple[str, str]]:
         entries = [
+            ("Switch service", "service"),
             ("Switch profile", "profile"),
             ("Toggle Readonly/Edit mode", "mode"),
             ("Refresh (clear cache)", "refresh"),
@@ -410,7 +406,9 @@ class BrowseScreen(Screen[None]):
     def _on_palette(self, value: str | None) -> None:
         if not value:
             return
-        if value == "profile":
+        if value == "service":
+            self.action_switch_service()
+        elif value == "profile":
             self.action_switch_profile()
         elif value == "mode":
             self.action_toggle_mode()
@@ -450,15 +448,3 @@ class BrowseScreen(Screen[None]):
         table = self.query_one("#table", DataTable)
         if self._rows:
             table.move_cursor(row=len(self._rows) - 1)
-
-
-class Sidebar(VerticalScroll):
-    def compose(self) -> ComposeResult:
-        yield Static("SERVICES", id="sidebar-title")
-        yield ListView(id="services")
-
-    def on_list_view_selected(self, event: ListView.Selected) -> None:
-        screen = self.app.screen
-        if isinstance(screen, BrowseScreen):
-            key, path, label = SIDEBAR[event.index]
-            screen._navigate(Location(key, path, label=label))

@@ -218,6 +218,10 @@ async def test_browse_s3_drilldown(stub_call):
         await pilot.press("escape")
         await settle(pilot)
         assert table.row_count == 1  # bucket list again
+        # Esc at service root returns to the service picker
+        await pilot.press("escape")
+        await settle(pilot)
+        assert app.screen.__class__.__name__ == "ServicePicker"
 
 
 @pytest.mark.asyncio
