@@ -11,7 +11,7 @@ from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
-from textual.widgets import RichLog, Static
+from textual.widgets import Footer, RichLog, Static
 
 from fast_aws.executor import Executor
 from fast_aws.fmt import fmt_time_ms, log_message, truncate
@@ -23,7 +23,7 @@ POLL_SECONDS = 2.0
 class TailScreen(Screen[None]):
     BINDINGS = [
         Binding("q", "close", "Close"),
-        Binding("escape", "close", "Close"),
+        Binding("escape", "close", "Close", show=False),
         Binding("p", "pause", "Pause"),
         Binding("c", "clear", "Clear"),
     ]
@@ -47,6 +47,7 @@ class TailScreen(Screen[None]):
         )
         yield RichLog(id="tail-log", highlight=False, markup=False, wrap=True)
         yield Static("", id="tail-status")
+        yield Footer(show_command_palette=False)
 
     def on_mount(self) -> None:
         self._worker = self._poll()

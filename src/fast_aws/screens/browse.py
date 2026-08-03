@@ -7,7 +7,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import DataTable, Input, Static
+from textual.widgets import DataTable, Footer, Input, Static
 
 from fast_aws.executor import ReadonlyViolation
 from fast_aws.fmt import truncate
@@ -39,9 +39,9 @@ class BrowseScreen(Screen[None]):
         Binding("a", "actions", "Actions"),
         Binding("i", "toggle_inspector", "Inspector"),
         Binding("/", "filter", "Filter"),
-        Binding("f", "filter", "Filter"),
-        Binding("g", "top", "Top"),
-        Binding("G", "bottom", "Bottom"),
+        Binding("f", "filter", "Filter", show=False),
+        Binding("g", "top", "Top", show=False),
+        Binding("G", "bottom", "Bottom", show=False),
         Binding("q", "quit_app", "Quit"),
     ]
 
@@ -81,6 +81,7 @@ class BrowseScreen(Screen[None]):
                 yield Static("", id="insp-links")
                 yield Static("Actions (a)", classes="insp-section")
                 yield Static("", id="insp-actions")
+        yield Footer(show_command_palette=False)
 
     def on_mount(self) -> None:
         self._services = build_services(self.app.executor)
