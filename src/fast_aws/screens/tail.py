@@ -14,7 +14,7 @@ from textual.screen import Screen
 from textual.widgets import Footer, RichLog, Static
 
 from fast_aws.executor import Executor
-from fast_aws.fmt import fmt_time_ms, log_message, truncate
+from fast_aws.fmt import fmt_time_ms, log_message, primary_markup, truncate
 
 TAIL_WINDOW_MS = 30_000
 POLL_SECONDS = 2.0
@@ -30,8 +30,19 @@ class TailScreen(Screen[None]):
 
     CSS = """
     #tail-log { height: 1fr; }
-    #tail-status { height: 1; color: #64748b; background: #10151c; padding: 0 1; }
-    #tail-header { height: 1; color: #7dd3fc; text-style: bold; background: #10151c; padding: 0 1; }
+    #tail-status {
+        height: 1;
+        color: $foreground-muted;
+        background: $panel;
+        padding: 0 1;
+    }
+    #tail-header {
+        height: 1;
+        color: $text-primary;
+        text-style: bold;
+        background: $panel;
+        padding: 0 1;
+    }
     """
 
     def __init__(self, group: str, exec: Executor):
@@ -42,7 +53,7 @@ class TailScreen(Screen[None]):
 
     def compose(self) -> ComposeResult:
         yield Static(
-            f"[bold #7dd3fc]fast-aws[/] [dim]▸[/] tail [dim]▸[/] {self._group}",
+            f"{primary_markup('fast-aws')} [dim]▸[/] tail [dim]▸[/] {self._group}",
             id="tail-header",
         )
         yield RichLog(id="tail-log", highlight=False, markup=False, wrap=True)

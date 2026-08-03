@@ -1,7 +1,3 @@
-Screen {
-    background: #0e1116;
-}
-
 .hidden {
     display: none;
 }
@@ -10,8 +6,8 @@ Screen {
 #topbar {
     height: 2;
     dock: top;
-    background: #10151c;
-    color: #94a3b8;
+    background: $panel;
+    color: $foreground-muted;
     padding: 0 1;
 }
 
@@ -22,9 +18,6 @@ Screen {
 ListView > ListItem {
     padding: 0 1;
     height: 1;
-}
-ListView > ListItem.--highlight {
-    background: #1e3a5f;
 }
 ListView > ListItem > Label {
     padding: 0 1;
@@ -37,23 +30,23 @@ ListView > ListItem > Label {
 #breadcrumb {
     height: 1;
     padding: 0 1;
-    color: #64748b;
-    background: #10151c;
+    color: $foreground-muted;
+    background: $panel;
 }
 #breadcrumb .crumb-sep {
-    color: #334155;
+    color: $foreground-disabled;
 }
 
 #filter-row {
     height: 3;
-    background: #10151c;
-    border-bottom: solid #232b36;
+    background: $panel;
+    border-bottom: solid $border-blurred;
 }
 #filter-label {
     padding: 0 1;
     width: 8;
     content-align: center middle;
-    color: #7dd3fc;
+    color: $text-primary;
     text-style: bold;
 }
 #filter {
@@ -63,19 +56,7 @@ ListView > ListItem > Label {
 
 DataTable {
     height: 1fr;
-    background: #0e1116;
-    border-bottom: solid #232b36;
-}
-DataTable > .datatable--header {
-    background: #131a23;
-    color: #7dd3fc;
-    text-style: bold;
-}
-DataTable > .datatable--cursor {
-    background: #1e3a5f;
-}
-DataTable > .datatable--odd-row {
-    background: #0f1319;
+    border-bottom: solid $border-blurred;
 }
 DataTable:focus {
     border: none;
@@ -84,55 +65,33 @@ DataTable:focus {
 #status {
     height: 1;
     padding: 0 1;
-    color: #64748b;
-    background: #10151c;
+    color: $foreground-muted;
+    background: $panel;
 }
 #status.error {
-    color: #f87171;
+    color: $text-error;
 }
 #status.ok {
-    color: #4ade80;
-}
-
-/* ---- footer ------------------------------------------------------------ */
-Footer {
-    background: #10151c;
-    color: #94a3b8;
-}
-FooterKey {
-    background: #10151c;
-}
-FooterKey .footer-key--key {
-    background: #1e3a5f;
-    color: #7dd3fc;
-    text-style: bold;
-}
-FooterKey .footer-key--description {
-    color: #94a3b8;
-    background: #10151c;
-}
-FooterLabel {
-    color: #64748b;
-    background: #10151c;
+    color: $text-success;
 }
 
 /* ---- inspector --------------------------------------------------------- */
 #inspector {
     width: 40;
-    background: #10151c;
-    border-left: solid #232b36;
+    background: $panel;
+    border-left: solid $border-blurred;
 }
 #insp-title {
     text-style: bold;
-    color: #7dd3fc;
+    color: $text-primary;
     padding: 1 1 0 1;
 }
 #insp-kind {
-    color: #64748b;
+    color: $foreground-muted;
     padding: 0 1;
 }
 #insp-note {
-    color: #475569;
+    color: $foreground-disabled;
     padding: 0 1;
 }
 #insp-detail {
@@ -141,7 +100,7 @@ FooterLabel {
     margin: 0 1 0 0;
 }
 .insp-section {
-    color: #94a3b8;
+    color: $foreground;
     text-style: bold;
     padding: 1 1 0 1;
 }
@@ -152,15 +111,14 @@ FooterLabel {
 /* ---- modals ------------------------------------------------------------ */
 ModalScreen {
     align: center middle;
-    background: rgba(10, 13, 17, 0.6);
 }
 .dialog {
     width: 72;
     max-width: 92%;
     height: auto;
     max-height: 90%;
-    background: #151b23;
-    border: tall #2f3a48;
+    background: $surface;
+    border: tall $border;
     padding: 1 2;
 }
 .dialog.small {
@@ -168,7 +126,7 @@ ModalScreen {
 }
 .dialog-title {
     text-style: bold;
-    color: #7dd3fc;
+    color: $text-primary;
     padding: 0 0 1 0;
 }
 .dialog-list {
@@ -176,11 +134,11 @@ ModalScreen {
     margin: 1 0 0 0;
 }
 .dialog-note {
-    color: #64748b;
+    color: $foreground-muted;
     padding: 1 0 0 0;
 }
 .dialog-error {
-    color: #f87171;
+    color: $text-error;
     padding: 1 0 0 0;
 }
 
@@ -194,7 +152,7 @@ ModalScreen {
     max-height: 24;
 }
 #profiles > ListItem.current, #services-pick > ListItem.current {
-    color: #7dd3fc;
+    color: $text-primary;
 }
 #profile-status {
     padding: 1 0 0 0;
@@ -202,18 +160,11 @@ ModalScreen {
 
 #palette-input {
     margin: 0 0 1 0;
-    border: round #2f3a48;
+    border: round $border;
 }
 
 Button {
     margin: 1 1 0 0;
-}
-Button.primary {
-    background: #1e3a5f;
-}
-Button.danger {
-    background: #4c1d1d;
-    color: #fca5a5;
 }
 
 #result-scroll {
@@ -225,14 +176,14 @@ Button.danger {
 }
 
 RichLog {
-    background: #0a0e13;
-    border: round #2f3a48;
+    background: $background;
+    border: round $border;
     height: 1fr;
     padding: 0 1;
 }
 
 #tail-status {
-    color: #64748b;
+    color: $foreground-muted;
     padding: 0 1 1 0;
 }
 

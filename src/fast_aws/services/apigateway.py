@@ -14,6 +14,7 @@ from fast_aws.fmt import (
     http_method_markup,
     kv,
     kv_block,
+    muted_markup,
     section,
     tree_label,
     tree_prefix,
@@ -83,9 +84,7 @@ def _resource_tree_items(api: str, resources: list[dict[str, Any]]) -> list[Item
                     f"{rid}:{method}",
                     f"{method.upper()} {path}",
                     (
-                        fmt_http_method(
-                            method, prefix=tree_prefix(next_continues, last_under)
-                        ),
+                        fmt_http_method(method, prefix=tree_prefix(next_continues, last_under)),
                         "method",
                     ),
                     kind="method",
@@ -220,13 +219,11 @@ class ApiGatewayService(ResourceService):
             )
         if item.kind == "resource":
             methods = d.get("resourceMethods") or {}
-            method_labels = (
-                " ".join(http_method_markup(m) for m in sorted(methods)) or "—"
-            )
+            method_labels = " ".join(http_method_markup(m) for m in sorted(methods)) or "—"
             return "\n".join(
                 [
                     kv("Path", d.get("path", "/")),
-                    f"[#94a3b8]Methods:[/] {method_labels}",
+                    f"{muted_markup('Methods:')} {method_labels}",
                     kv("ID", d.get("id", item.id)),
                 ]
             )
@@ -235,7 +232,7 @@ class ApiGatewayService(ResourceService):
             method = item.payload.get("http_method", "") or item.label
             return "\n".join(
                 [
-                    f"[#94a3b8]Method:[/] {http_method_markup(method)}",
+                    f"{muted_markup('Method:')} {http_method_markup(method)}",
                     kv("Path", item.payload.get("path", "/") or "—"),
                     kv("Integration", integ.get("type", "") or "—"),
                     kv("URI", integ.get("uri", "") or "—"),
@@ -270,16 +267,14 @@ class ApiGatewayService(ResourceService):
             )
         if item.kind == "resource":
             methods = d.get("resourceMethods") or {}
-            method_labels = (
-                " ".join(http_method_markup(m) for m in sorted(methods)) or "—"
-            )
+            method_labels = " ".join(http_method_markup(m) for m in sorted(methods)) or "—"
             parts = [
                 "\n".join(
                     [
                         kv("Path", d.get("path", item.payload.get("path", "/"))),
                         kv("ID", d.get("id", item.id)),
                         kv("Parent", d.get("parentId", "") or "—"),
-                        f"[#94a3b8]Methods:[/] {method_labels}",
+                        f"{muted_markup('Methods:')} {method_labels}",
                     ]
                 )
             ]
@@ -287,14 +282,11 @@ class ApiGatewayService(ResourceService):
                 parts.append(section("Integrations"))
                 for method, conf in sorted(methods.items()):
                     if not isinstance(conf, dict):
-                        parts.append(
-                            f"{http_method_markup(method)}  [#94a3b8](no config)[/]"
-                        )
+                        parts.append(f"{http_method_markup(method)}  {muted_markup('(no config)')}")
                         continue
                     integ = conf.get("methodIntegration") or {}
                     lines = [
-                        f"{http_method_markup(method)}  "
-                        f"{integ.get('type', '') or '—'}",
+                        f"{http_method_markup(method)}  {integ.get('type', '') or '—'}",
                         kv("URI", integ.get("uri", "") or "—"),
                     ]
                     if integ.get("httpMethod"):
@@ -306,7 +298,7 @@ class ApiGatewayService(ResourceService):
             method = item.payload.get("http_method") or d.get("httpMethod") or ""
             return "\n".join(
                 [
-                    f"[#94a3b8]Method:[/] {http_method_markup(method)}",
+                    f"{muted_markup('Method:')} {http_method_markup(method)}",
                     kv("Path", item.payload.get("path", "/") or "—"),
                     kv("Resource ID", item.payload.get("resource_id", "") or "—"),
                     kv("Authorization", d.get("authorizationType", "") or "—"),

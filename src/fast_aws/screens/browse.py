@@ -7,10 +7,11 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
+from textual.theme import Theme
 from textual.widgets import DataTable, Footer, Input, Static
 
 from fast_aws.executor import ReadonlyViolation
-from fast_aws.fmt import truncate
+from fast_aws.fmt import muted_markup, primary_markup, theme_var, truncate
 from fast_aws.models import Action, Item, Link, Location, Page
 from fast_aws.screens.palette import PaletteScreen
 from fast_aws.screens.profile_picker import ProfilePicker
@@ -85,6 +86,7 @@ class BrowseScreen(Screen[None]):
 
     def on_mount(self) -> None:
         self._services = build_services(self.app.executor)
+        self.app.theme_changed_signal.subscribe(self, self._on_theme_changed)
         self._refresh_topbar()
 
         if self._initial is not None:
@@ -92,12 +94,21 @@ class BrowseScreen(Screen[None]):
         else:
             self.action_switch_service()
 
+    def _on_theme_changed(self, _theme: Theme) -> None:
+        self._refresh_topbar()
+        if self._loc is not None:
+            self._update_breadcrumb()
+
     def _refresh_topbar(self) -> None:
         exec = self.app.executor
         mode = exec.mode_label
-        color = "#fbbf24" if exec.readonly else "#f87171"
+        color = (
+            theme_var("text-warning", "#fbbf24")
+            if exec.readonly
+            else theme_var("text-error", "#f87171")
+        )
         self.query_one("#topbar", Static).update(
-            f"[bold #7dd3fc]fast-aws[/] [dim]▸[/] [#94a3b8]{self.app.profile}[/] "
+            f"{primary_markup('fast-aws')} [dim]▸[/] {muted_markup(self.app.profile)} "
             f"[dim]▸[/] {self.app.region}    [bold {color}]{mode}[/]"
         )
 
@@ -162,10 +173,10 @@ class BrowseScreen(Screen[None]):
 
     def _update_breadcrumb(self) -> None:
         svc = self._services[self._loc.service_key]
-        parts = [f"[bold #7dd3fc]{svc.icon} {svc.name}[/]"]
+        parts = [primary_markup(f"{svc.icon} {svc.name}")]
         for seg in self._loc.path:
             label = svc.path_label(seg)
-            parts.append(f"[dim]/[/][#94a3b8]{truncate(label, 40)}[/]")
+            parts.append(f"[dim]/[/]{muted_markup(truncate(label, 40))}")
         if self._current is not None and self._current.label:
             last = self._loc.path[-1] if self._loc.path else None
             last_label = svc.path_label(last) if last is not None else None
@@ -177,7 +188,8 @@ class BrowseScreen(Screen[None]):
                     or self._current.id == last
                 )
             ):
-                parts.append(f"[dim]▸[/][#e2e8f0]{truncate(self._current.label, 40)}[/]")
+                fg = theme_var("foreground", "#e2e8f0")
+                parts.append(f"[dim]▸[/][{fg}]{truncate(self._current.label, 40)}[/]")
         self.query_one("#breadcrumb", Static).update("  ".join(parts))
 
     # -- selection / inspector ---------------------------------------------
@@ -416,6 +428,7 @@ class BrowseScreen(Screen[None]):
         entries = [
             ("Switch service", "service"),
             ("Switch profile", "profile"),
+            ("Change theme", "theme"),
             ("Toggle Readonly/Edit mode", "mode"),
             ("Refresh (clear cache)", "refresh"),
             ("Quit fast-aws", "quit"),
@@ -431,6 +444,8 @@ class BrowseScreen(Screen[None]):
             self.action_switch_service()
         elif value == "profile":
             self.action_switch_profile()
+        elif value == "theme":
+            self.app.action_change_theme()
         elif value == "mode":
             self.action_toggle_mode()
         elif value == "refresh":

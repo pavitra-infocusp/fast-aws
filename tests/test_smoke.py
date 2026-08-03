@@ -122,7 +122,7 @@ def _obj(extra: dict | None = None) -> dict:
                         )
                     }
                 }
-            }
+            },
         },
         "get_method": {
             "httpMethod": "GET",
@@ -412,3 +412,41 @@ async def test_mode_toggle_readonly_default(stub_call):
         await settle(pilot)
         assert app.executor.readonly is False
         assert "EDIT" in str(app.screen.query_one("#topbar").content)
+
+
+@pytest.mark.asyncio
+async def test_loads_saved_theme(stub_call):
+    from fast_aws.config import set_theme
+
+    set_theme("nord")
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await settle(pilot)
+        assert app.theme == "nord"
+
+
+@pytest.mark.asyncio
+async def test_theme_change_persists(stub_call):
+    from fast_aws.config import get_theme
+
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await settle(pilot)
+        app.theme = "tokyo-night"
+        await settle(pilot)
+        assert get_theme() == "tokyo-night"
+
+
+@pytest.mark.asyncio
+async def test_palette_change_theme(stub_call):
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await pick_service(pilot)  # S3
+        await pilot.press("ctrl+p")
+        await settle(pilot)
+        await pilot.press("c", "h", "a", "n", "g", "e", " ", "t")
+        await settle(pilot)
+        await pilot.press("enter")
+        await settle(pilot)
+        # Textual theme search palette (CommandPalette), not our PaletteScreen
+        assert app.screen.__class__.__name__ == "CommandPalette"

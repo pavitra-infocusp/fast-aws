@@ -5,9 +5,11 @@ from __future__ import annotations
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.screen import Screen
+from textual.theme import Theme
 from textual.widgets import Static
 
 from fast_aws.auth import list_profiles, resolve_region
+from fast_aws.config import DEFAULT_THEME, get_theme, set_theme
 from fast_aws.executor import Executor
 from fast_aws.ui.theme import CSS_PATH
 
@@ -19,12 +21,18 @@ class NoConfigScreen(Screen[None]):
 
     CSS = """
     Screen { align: center middle; }
-    #msg { width: 68; max-width: 92%; background: #151b23; border: tall #2f3a48; padding: 2; }
+    #msg {
+        width: 68;
+        max-width: 92%;
+        background: $surface;
+        border: tall $border;
+        padding: 2;
+    }
     """
 
     def compose(self) -> ComposeResult:
         yield Static(
-            "[bold #7dd3fc]fast-aws[/]\n\n"
+            "[bold]fast-aws[/]\n\n"
             "No profiles found in ~/.aws/config.\n\n"
             "Set up AWS first, then re-launch:\n"
             "    aws configure          (access keys)\n"
@@ -60,6 +68,10 @@ class FastAwsApp(App[None]):
         self.executor: Executor | None = None
 
     def on_mount(self) -> None:
+        saved = get_theme()
+        self.theme = saved if saved in self.available_themes else DEFAULT_THEME
+        self.theme_changed_signal.subscribe(self, self._on_theme_changed)
+
         profiles = list_profiles()
         if self.cli_profile:
             self._init_executor(self.cli_profile, self.cli_region)
@@ -70,6 +82,9 @@ class FastAwsApp(App[None]):
             self.push_screen(ProfilePicker(cancellable=False), self._on_launch_profile)
         else:
             self.push_screen(NoConfigScreen())
+
+    def _on_theme_changed(self, theme: Theme) -> None:
+        set_theme(theme.name)
 
     def _init_executor(self, profile: str | None, region: str | None) -> None:
         """Build the executor and show the service picker."""

@@ -14,6 +14,7 @@ from fast_aws.fmt import (
     fmt_time,
     kv_block,
     section,
+    theme_var,
     tree_label,
     tree_prefix,
     truncate,
@@ -21,7 +22,9 @@ from fast_aws.fmt import (
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
-_FOLDER_STYLE = "bold #7dd3fc"
+
+def _folder_style() -> str:
+    return f"bold {theme_var('text-primary', '#7dd3fc')}"
 
 
 class _Node:
@@ -88,15 +91,13 @@ def _object_tree_items(
 
         name = f"{node.name}/" if folder else node.name
         if folder:
-            prefix_key = (
-                node.full_key if node.full_key.endswith("/") else f"{node.full_key}/"
-            )
+            prefix_key = node.full_key if node.full_key.endswith("/") else f"{node.full_key}/"
             items.append(
                 Item(
                     "s3",
                     prefix_key,
                     prefix_key,
-                    (tree_label(prefix, name, style=_FOLDER_STYLE), "", ""),
+                    (tree_label(prefix, name, style=_folder_style()), "", ""),
                     kind="prefix",
                     payload={"Bucket": bucket, "Prefix": prefix_key},
                 )

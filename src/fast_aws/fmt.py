@@ -12,6 +12,7 @@ from typing import Any
 from rich.console import Group, RenderableType
 from rich.json import JSON
 from rich.text import Text
+from textual.app import active_app
 
 # Common HTTP verb colors (Postman / Insomnia-style cues).
 _HTTP_METHOD_COLORS = {
@@ -24,6 +25,25 @@ _HTTP_METHOD_COLORS = {
     "HEAD": "#94a3b8",
     "ANY": "#94a3b8",
 }
+
+
+def theme_var(name: str, fallback: str) -> str:
+    """Resolve a Textual theme CSS variable from the active app, if any."""
+    app = active_app.get(None)
+    if app is None:
+        return fallback
+    return app.theme_variables.get(name, fallback)
+
+
+def muted_markup(text: str) -> str:
+    """Wrap text in theme-aware muted foreground markup."""
+    return f"[{theme_var('foreground-muted', '#94a3b8')}]{text}[/]"
+
+
+def primary_markup(text: str, *, bold: bool = True) -> str:
+    """Wrap text in theme-aware primary text markup."""
+    color = theme_var("text-primary", "#7dd3fc")
+    return f"[bold {color}]{text}[/]" if bold else f"[{color}]{text}[/]"
 
 
 def http_method_color(method: str) -> str:
@@ -42,7 +62,8 @@ def fmt_http_method(method: str, *, prefix: str = "", indent: str = "") -> Text:
     return tree_label(prefix or indent, m, style=f"bold {http_method_color(m)}")
 
 
-TREE_GUIDE_STYLE = "#475569"
+def tree_guide_style() -> str:
+    return theme_var("foreground-disabled", "#475569")
 
 
 def tree_prefix(continues: list[bool], is_last: bool) -> str:
@@ -56,7 +77,7 @@ def tree_label(prefix: str, name: str, *, style: str | None = None) -> Text:
     """Label cell with a muted indent guide and optional label style."""
     text = Text()
     if prefix:
-        text.append(prefix, style=TREE_GUIDE_STYLE)
+        text.append(prefix, style=tree_guide_style())
     text.append(name, style=style) if style else text.append(name)
     return text
 
@@ -148,7 +169,7 @@ def try_json(text: str) -> JSON | None:
         return None
     try:
         return JSON(raw)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
@@ -195,7 +216,7 @@ def kv(label: str, value: Any, empty: str = "—") -> str:
         text = empty
     # Escape brackets so arbitrary AWS values don't break Textual markup.
     text = text.replace("[", "\\[")
-    return f"[#94a3b8]{label}:[/] {text}"
+    return f"{muted_markup(f'{label}:')} {text}"
 
 
 def kv_block(pairs: list[tuple[str, Any]], empty: str = "—") -> str:
@@ -210,14 +231,16 @@ def kv_block(pairs: list[tuple[str, Any]], empty: str = "—") -> str:
 
 def section(title: str) -> str:
     """Section header for rich modal bodies."""
-    return f"\n[bold #7dd3fc]{title}[/]"
+    return f"\n{primary_markup(title)}"
 
 
 def describe_fallback(obj: Any, max_len: int = 90) -> str:
     """Generic key: value rendering of a boto3 response (used as a last resort)."""
     if not isinstance(obj, dict) or not obj:
         return str(obj) if obj else "(no details)"
-    return "\n".join(f"[#94a3b8]{humanize(k)}:[/] {_scalar(v, max_len)}" for k, v in obj.items())
+    return "\n".join(
+        f"{muted_markup(f'{humanize(k)}:')} {_scalar(v, max_len)}" for k, v in obj.items()
+    )
 
 
 def detail_fallback(obj: Any, max_len: int = 400) -> str:
