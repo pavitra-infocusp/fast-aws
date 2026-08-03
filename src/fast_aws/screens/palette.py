@@ -5,11 +5,12 @@ from __future__ import annotations
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
-from textual.screen import ModalScreen
 from textual.widgets import Input, Label, ListItem, ListView, Static
 
+from fast_aws.ui.widgets import BackdropDismissModal
 
-class PaletteScreen(ModalScreen[str]):
+
+class PaletteScreen(BackdropDismissModal[str | None]):
     BINDINGS = [Binding("escape", "cancel", "Cancel")]
 
     def __init__(self, entries: list[tuple[str, str]]):

@@ -6,19 +6,22 @@ from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
-from textual.screen import ModalScreen
 from textual.widgets import RichLog, Static
 
 from fast_aws.executor import AuthError, Executor
 from fast_aws.fmt import truncate
+from fast_aws.ui.widgets import BackdropDismissModal
 
 
-class LoginScreen(ModalScreen[str]):
+class LoginScreen(BackdropDismissModal[str]):
     BINDINGS = [Binding("escape", "cancel", "Cancel")]
 
     def __init__(self, exec: Executor):
         super().__init__()
         self._exec = exec
+
+    def _backdrop_result(self) -> str:
+        return "cancel"
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(classes="dialog"):

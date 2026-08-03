@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Generic, TypeVar
+
+from textual import events
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import VerticalScroll
+from textual.css.query import NoMatches
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
@@ -23,12 +27,30 @@ SERVICE_ICONS: dict[str, str] = {
     "sqs": "📮",
 }
 
+T = TypeVar("T")
+
 
 def icon_for(service: str) -> str:
     return SERVICE_ICONS.get(service, "•")
 
 
-class ConfirmScreen(ModalScreen[bool]):
+class BackdropDismissModal(ModalScreen[T], Generic[T]):
+    """ModalScreen that dismisses when the dimmed backdrop is clicked."""
+
+    def _backdrop_result(self) -> T:
+        """Value passed to dismiss() when the user clicks outside the dialog."""
+        return None  # type: ignore[return-value]
+
+    def on_click(self, event: events.Click) -> None:
+        try:
+            dialog = self.query_one(".dialog")
+        except NoMatches:
+            return
+        if not dialog.region.contains(event.screen_x, event.screen_y):
+            self.dismiss(self._backdrop_result())
+
+
+class ConfirmScreen(BackdropDismissModal[bool]):
     """Yes/No confirmation dialog."""
 
     BINDINGS = [Binding("escape", "no", "No"), Binding("enter", "yes", "Yes")]
@@ -38,6 +60,9 @@ class ConfirmScreen(ModalScreen[bool]):
         self._question = question
         self._title = title
         self._danger = danger
+
+    def _backdrop_result(self) -> bool:
+        return False
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(classes="dialog small"):
@@ -56,7 +81,7 @@ class ConfirmScreen(ModalScreen[bool]):
         self.dismiss(True)
 
 
-class ResultScreen(ModalScreen[None]):
+class ResultScreen(BackdropDismissModal[None]):
     """Show a (possibly long) text result, e.g. secret values."""
 
     BINDINGS = [
@@ -80,7 +105,7 @@ class ResultScreen(ModalScreen[None]):
         self.dismiss(None)
 
 
-class LinksScreen(ModalScreen[Link | None]):
+class LinksScreen(BackdropDismissModal[Link | None]):
     """Pick a linked resource to jump to."""
 
     BINDINGS = [Binding("escape", "cancel", "Cancel")]
@@ -110,7 +135,7 @@ class LinksScreen(ModalScreen[Link | None]):
         self.dismiss(None)
 
 
-class ActionsScreen(ModalScreen[Action | None]):
+class ActionsScreen(BackdropDismissModal[Action | None]):
     """Pick an action for the selected resource."""
 
     BINDINGS = [Binding("escape", "cancel", "Cancel")]
