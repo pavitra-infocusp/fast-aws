@@ -90,11 +90,41 @@ def humanize(key: str) -> str:
     return s[:1].upper() + s[1:]
 
 
+def kv(label: str, value: Any, empty: str = "—") -> str:
+    """One labeled Textual markup line for inspector/modal bodies."""
+    text = "" if value is None else str(value)
+    if not text:
+        text = empty
+    # Escape brackets so arbitrary AWS values don't break Textual markup.
+    text = text.replace("[", "\\[")
+    return f"[#94a3b8]{label}:[/] {text}"
+
+
+def kv_block(pairs: list[tuple[str, Any]], empty: str = "—") -> str:
+    """Join labeled lines; skip pairs whose value is None (use empty string to show)."""
+    lines: list[str] = []
+    for label, value in pairs:
+        if value is None:
+            continue
+        lines.append(kv(label, value, empty=empty))
+    return "\n".join(lines) if lines else "(no details)"
+
+
+def section(title: str) -> str:
+    """Section header for rich modal bodies."""
+    return f"\n[bold #7dd3fc]{title}[/]"
+
+
 def describe_fallback(obj: Any, max_len: int = 90) -> str:
     """Generic key: value rendering of a boto3 response (used as a last resort)."""
     if not isinstance(obj, dict) or not obj:
         return str(obj) if obj else "(no details)"
     return "\n".join(f"[#94a3b8]{humanize(k)}:[/] {_scalar(v, max_len)}" for k, v in obj.items())
+
+
+def detail_fallback(obj: Any, max_len: int = 400) -> str:
+    """Richer generic key/value for the detail modal (longer values than inspector)."""
+    return describe_fallback(obj, max_len=max_len)
 
 
 def copy_to_clipboard(value: str) -> bool:

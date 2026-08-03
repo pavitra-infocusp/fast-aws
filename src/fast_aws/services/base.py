@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fast_aws.executor import Executor
-from fast_aws.fmt import describe_fallback
+from fast_aws.fmt import describe_fallback, detail_fallback
 from fast_aws.models import Action, Item, Link, Page
 
 
@@ -26,6 +26,10 @@ class ResourceService:
     def describe(self, item: Item, detail: Any) -> str:
         """Human-meaningful summary for the inspector; overridden per service."""
         return describe_fallback(detail)
+
+    def detail_body(self, item: Item, detail: Any) -> str:
+        """Rich modal body for Enter; default is humanized kv, not raw JSON."""
+        return detail_fallback(detail)
 
     async def links(self, item: Item) -> list[Link]:
         return []

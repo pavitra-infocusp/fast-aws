@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from fast_aws.fmt import describe_fallback, fmt_bytes, fmt_time_ms, truncate
+from fast_aws.fmt import (
+    describe_fallback,
+    detail_fallback,
+    fmt_bytes,
+    fmt_time_ms,
+    kv,
+    kv_block,
+    section,
+    truncate,
+)
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -98,30 +107,70 @@ class CloudWatchService(ResourceService):
         d = detail if isinstance(detail, dict) else {}
         if item.kind == "log_group":
             ret = d.get("retentionInDays")
-            return "\n".join(
+            return kv_block(
                 [
-                    f"[#94a3b8]Group:[/] {d.get('logGroupName', item.label)}",
-                    f"[#94a3b8]Bytes:[/] {fmt_bytes(d.get('storedBytes', 0))}",
-                    f"[#94a3b8]Retention:[/] {ret} d" if ret else "[#94a3b8]Retention:[/] forever",
-                    f"[#94a3b8]Created:[/] {fmt_time_ms(d.get('creationTime'))}",
+                    ("Group", d.get("logGroupName", item.label)),
+                    ("Bytes", fmt_bytes(d.get("storedBytes", 0))),
+                    ("Retention", f"{ret} d" if ret else "forever"),
+                    ("Created", fmt_time_ms(d.get("creationTime"))),
                 ]
             )
         if item.kind == "log_stream":
-            return "\n".join(
+            return kv_block(
                 [
-                    f"[#94a3b8]Stream:[/] {d.get('logStreamName', item.label)}",
-                    f"[#94a3b8]Last event:[/] {fmt_time_ms(d.get('lastEventTimestamp'))}",
-                    f"[#94a3b8]First event:[/] {fmt_time_ms(d.get('creationTime'))}",
+                    ("Stream", d.get("logStreamName", item.label)),
+                    ("Last event", fmt_time_ms(d.get("lastEventTimestamp"))),
+                    ("First event", fmt_time_ms(d.get("creationTime"))),
                 ]
             )
         if item.kind == "log_event":
-            return "\n".join(
+            return kv_block(
                 [
-                    f"[#94a3b8]Timestamp:[/] {fmt_time_ms(d.get('timestamp'))}",
-                    f"[#94a3b8]Message:[/] {truncate(d.get('message', ''), 300)}",
+                    ("Timestamp", fmt_time_ms(d.get("timestamp"))),
+                    ("Message", truncate(d.get("message", ""), 300)),
                 ]
             )
         return describe_fallback(d)
+
+    def detail_body(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        if item.kind == "log_group":
+            ret = d.get("retentionInDays")
+            return kv_block(
+                [
+                    ("Group", d.get("logGroupName", item.label)),
+                    ("ARN", d.get("arn", "") or "—"),
+                    ("Bytes", fmt_bytes(d.get("storedBytes", 0))),
+                    ("Retention", f"{ret} d" if ret else "forever"),
+                    ("Created", fmt_time_ms(d.get("creationTime"))),
+                    ("KMS key", d.get("kmsKeyId", "") or "—"),
+                    ("Metric filter count", d.get("metricFilterCount", "") or "—"),
+                ]
+            )
+        if item.kind == "log_stream":
+            return kv_block(
+                [
+                    ("Stream", d.get("logStreamName", item.label)),
+                    ("ARN", d.get("arn", "") or "—"),
+                    ("Created", fmt_time_ms(d.get("creationTime"))),
+                    ("First event", fmt_time_ms(d.get("firstEventTimestamp"))),
+                    ("Last event", fmt_time_ms(d.get("lastEventTimestamp"))),
+                    ("Last ingestion", fmt_time_ms(d.get("lastIngestionTime"))),
+                    ("Stored bytes", fmt_bytes(d.get("storedBytes"))),
+                ]
+            )
+        if item.kind == "log_event":
+            msg = d.get("message", "") or ""
+            safe = str(msg).replace("[", "\\[")
+            return "\n".join(
+                [
+                    kv("Timestamp", fmt_time_ms(d.get("timestamp"))),
+                    kv("Ingestion", fmt_time_ms(d.get("ingestionTime"))),
+                    section("Message"),
+                    safe or "(empty)",
+                ]
+            )
+        return detail_fallback(d)
 
     def actions(self, item: Item) -> list[Action]:
         if item.kind == "log_group":

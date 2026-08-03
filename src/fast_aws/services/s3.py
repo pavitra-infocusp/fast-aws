@@ -7,7 +7,15 @@ from typing import Any
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import describe_fallback, fmt_bytes, fmt_time, truncate
+from fast_aws.fmt import (
+    describe_fallback,
+    detail_fallback,
+    fmt_bytes,
+    fmt_time,
+    kv_block,
+    section,
+    truncate,
+)
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -108,26 +116,65 @@ class S3Service(ResourceService):
     def describe(self, item: Item, detail: Any) -> str:
         d = detail if isinstance(detail, dict) else {}
         if item.kind == "object":
-            return "\n".join(
+            return kv_block(
                 [
-                    f"[#94a3b8]Bucket:[/] {d.get('Bucket', '')}",
-                    f"[#94a3b8]Key:[/] {truncate(item.label, 80)}",
-                    f"[#94a3b8]Size:[/] {fmt_bytes(d.get('ContentLength'))}",
-                    f"[#94a3b8]Modified:[/] {fmt_time(d.get('LastModified'))}",
-                    f"[#94a3b8]Type:[/] {d.get('ContentType', '') or '—'}",
-                    f"[#94a3b8]Class:[/] {d.get('StorageClass', 'STANDARD')}",
-                    f"[#94a3b8]ETag:[/] {truncate(d.get('ETag', ''), 32)}",
+                    ("Bucket", d.get("Bucket", "")),
+                    ("Key", truncate(item.label, 80)),
+                    ("Size", fmt_bytes(d.get("ContentLength"))),
+                    ("Modified", fmt_time(d.get("LastModified"))),
+                    ("Type", d.get("ContentType", "") or "—"),
+                    ("Class", d.get("StorageClass", "STANDARD")),
+                    ("ETag", truncate(d.get("ETag", ""), 32)),
                 ]
             )
         if item.kind == "bucket":
-            return "\n".join(
+            return kv_block(
                 [
-                    f"[#94a3b8]Bucket:[/] {item.label}",
-                    f"[#94a3b8]Region:[/] {d.get('Region') or '(default)'}",
-                    f"[#94a3b8]Created:[/] {fmt_time(d.get('CreationDate'))}",
+                    ("Bucket", item.label),
+                    ("Region", d.get("Region") or "(default)"),
+                    ("Created", fmt_time(d.get("CreationDate"))),
                 ]
             )
         return describe_fallback(d)
+
+    def detail_body(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        if item.kind == "object":
+            parts = [
+                kv_block(
+                    [
+                        ("Bucket", d.get("Bucket", "")),
+                        ("Key", item.label),
+                        ("Size", fmt_bytes(d.get("ContentLength") or d.get("Size"))),
+                        ("Modified", fmt_time(d.get("LastModified"))),
+                        ("Type", d.get("ContentType", "") or "—"),
+                        ("Class", d.get("StorageClass", "STANDARD")),
+                        ("ETag", d.get("ETag", "") or "—"),
+                        ("Version", d.get("VersionId", "") or "—"),
+                    ]
+                )
+            ]
+            meta = d.get("Metadata") or {}
+            if isinstance(meta, dict) and meta:
+                parts.append(section("Metadata"))
+                parts.append(kv_block([(k, v) for k, v in meta.items()]))
+            return "\n".join(parts)
+        if item.kind == "bucket":
+            return kv_block(
+                [
+                    ("Bucket", item.label),
+                    ("Region", d.get("Region") or "(default)"),
+                    ("Created", fmt_time(d.get("CreationDate"))),
+                ]
+            )
+        if item.kind == "prefix":
+            return kv_block(
+                [
+                    ("Bucket", d.get("Bucket", "")),
+                    ("Prefix", d.get("Prefix", item.label)),
+                ]
+            )
+        return detail_fallback(d)
 
     def actions(self, item: Item) -> list[Action]:
         if item.kind == "object":

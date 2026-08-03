@@ -8,7 +8,7 @@ from typing import Any
 from botocore.exceptions import ClientError
 
 from fast_aws.executor import LoginRequired
-from fast_aws.fmt import truncate
+from fast_aws.fmt import fmt_bytes, kv_block, section, truncate
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -49,21 +49,87 @@ class LambdaService(ResourceService):
         if not isinstance(cfg, dict):
             cfg = {}
         arch = cfg.get("Architectures") or [""]
+        return kv_block(
+            [
+                ("Name", cfg.get("FunctionName", item.label)),
+                ("Runtime", cfg.get("Runtime", "") or "—"),
+                ("State", cfg.get("State", "") or "—"),
+                ("Last modified", cfg.get("LastModified", "") or "—"),
+                ("Handler", cfg.get("Handler", "") or "—"),
+                ("Memory", f"{cfg['MemorySize']} MB" if cfg.get("MemorySize") else None),
+                ("Timeout", f"{cfg['Timeout']} s" if cfg.get("Timeout") else None),
+                ("Arch", arch[0] if arch else "—"),
+                ("Role", str(cfg.get("Role", "")).split("/")[-1] or "—"),
+                ("Description", cfg.get("Description", "") or "—"),
+            ]
+        )
+
+    def detail_body(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        cfg = d.get("Configuration", d) if isinstance(d, dict) else {}
+        if not isinstance(cfg, dict):
+            cfg = {}
+        arch = cfg.get("Architectures") or []
         parts = [
-            f"[#94a3b8]Name:[/] {cfg.get('FunctionName', item.label)}",
-            f"[#94a3b8]Runtime:[/] {cfg.get('Runtime', '') or '—'}",
-            f"[#94a3b8]State:[/] {cfg.get('State', '') or '—'}",
-            f"[#94a3b8]Last modified:[/] {cfg.get('LastModified', '') or '—'}",
-            f"[#94a3b8]Handler:[/] {cfg.get('Handler', '') or '—'}",
-            f"[#94a3b8]Memory:[/] {cfg.get('MemorySize', '')} MB"
-            if cfg.get("MemorySize")
-            else None,
-            f"[#94a3b8]Timeout:[/] {cfg.get('Timeout', '')} s" if cfg.get("Timeout") else None,
-            f"[#94a3b8]Arch:[/] {arch[0] if arch else '—'}",
-            f"[#94a3b8]Role:[/] {str(cfg.get('Role', '')).split('/')[-1] or '—'}",
-            f"[#94a3b8]Description:[/] {cfg.get('Description', '') or '—'}",
+            kv_block(
+                [
+                    ("Name", cfg.get("FunctionName", item.label)),
+                    ("ARN", cfg.get("FunctionArn", "") or "—"),
+                    ("Runtime", cfg.get("Runtime", "") or "—"),
+                    ("State", cfg.get("State", "") or "—"),
+                    ("Last modified", cfg.get("LastModified", "") or "—"),
+                    ("Handler", cfg.get("Handler", "") or "—"),
+                    ("Memory", f"{cfg['MemorySize']} MB" if cfg.get("MemorySize") else "—"),
+                    ("Timeout", f"{cfg['Timeout']} s" if cfg.get("Timeout") else "—"),
+                    (
+                        "Ephemeral storage",
+                        (
+                            f"{(cfg.get('EphemeralStorage') or {}).get('Size', '')} MB"
+                            if cfg.get("EphemeralStorage")
+                            else None
+                        ),
+                    ),
+                    ("Arch", ", ".join(arch) if arch else "—"),
+                    ("Role", cfg.get("Role", "") or "—"),
+                    ("Description", cfg.get("Description", "") or "—"),
+                    ("Package type", cfg.get("PackageType", "") or "—"),
+                    ("Layers", len(cfg.get("Layers") or [])),
+                ]
+            )
         ]
-        return "\n".join(p for p in parts if p)
+        env = ((cfg.get("Environment") or {}).get("Variables")) or {}
+        if env:
+            parts.append(section("Environment"))
+            parts.append(kv_block([(k, v) for k, v in sorted(env.items())]))
+        code = d.get("Code") if isinstance(d, dict) else None
+        if isinstance(code, dict) and code:
+            parts.append(section("Code"))
+            loc = code.get("Location")
+            parts.append(
+                kv_block(
+                    [
+                        ("Size", fmt_bytes(code.get("CodeSize") or cfg.get("CodeSize"))),
+                        ("SHA256", code.get("CodeSha256") or cfg.get("CodeSha256") or "—"),
+                        ("Repository type", code.get("RepositoryType", "") or "—"),
+                        ("Location", truncate(loc, 80) if loc else None),
+                    ]
+                )
+            )
+        elif cfg.get("CodeSize") or cfg.get("CodeSha256"):
+            parts.append(section("Code"))
+            parts.append(
+                kv_block(
+                    [
+                        ("Size", fmt_bytes(cfg.get("CodeSize"))),
+                        ("SHA256", cfg.get("CodeSha256", "") or "—"),
+                    ]
+                )
+            )
+        tags = d.get("Tags") if isinstance(d, dict) else None
+        if isinstance(tags, dict) and tags:
+            parts.append(section("Tags"))
+            parts.append(kv_block([(k, v) for k, v in sorted(tags.items())]))
+        return "\n".join(parts)
 
     async def links(self, item: Item) -> list[Link]:
         out: list[Link] = []

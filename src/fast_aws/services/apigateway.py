@@ -6,7 +6,7 @@ from typing import Any
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import describe_fallback
+from fast_aws.fmt import describe_fallback, detail_fallback, kv_block, section
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -109,31 +109,98 @@ class ApiGatewayService(ResourceService):
     def describe(self, item: Item, detail: Any) -> str:
         d = detail if isinstance(detail, dict) else {}
         if item.kind == "api":
-            return "\n".join(
+            return kv_block(
                 [
-                    f"[#94a3b8]Name:[/] {d.get('name', item.label)}",
-                    f"[#94a3b8]ID:[/] {d.get('id', '') or '—'}",
-                    f"[#94a3b8]Created:[/] {d.get('createdDate', '') or '—'}",
+                    ("Name", d.get("name", item.label)),
+                    ("ID", d.get("id", "") or "—"),
+                    ("Created", d.get("createdDate", "") or "—"),
                 ]
             )
         if item.kind == "resource":
             methods = "/".join(sorted((d.get("resourceMethods") or {}).keys())) or "—"
-            return "\n".join(
+            return kv_block(
                 [
-                    f"[#94a3b8]Path:[/] {d.get('path', '/')}",
-                    f"[#94a3b8]Methods:[/] {methods}",
-                    f"[#94a3b8]ID:[/] {d.get('id', item.id)}",
+                    ("Path", d.get("path", "/")),
+                    ("Methods", methods),
+                    ("ID", d.get("id", item.id)),
                 ]
             )
         if item.kind == "stage":
-            return "\n".join(
+            return kv_block(
                 [
-                    f"[#94a3b8]Stage:[/] {d.get('stageName', item.label)}",
-                    f"[#94a3b8]Deployment:[/] {d.get('deploymentId', '') or '—'}",
-                    f"[#94a3b8]Updated:[/] {d.get('lastUpdatedDate', '') or '—'}",
+                    ("Stage", d.get("stageName", item.label)),
+                    ("Deployment", d.get("deploymentId", "") or "—"),
+                    ("Updated", d.get("lastUpdatedDate", "") or "—"),
                 ]
             )
         return describe_fallback(d)
+
+    def detail_body(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        if item.kind == "api":
+            return kv_block(
+                [
+                    ("Name", d.get("name", item.label)),
+                    ("ID", d.get("id", "") or "—"),
+                    ("Description", d.get("description", "") or "—"),
+                    ("Created", d.get("createdDate", "") or "—"),
+                    ("Version", d.get("version", "") or "—"),
+                    (
+                        "Endpoint",
+                        ", ".join(d.get("endpointConfiguration", {}).get("types", []) or []) or "—",
+                    ),
+                    ("API key source", d.get("apiKeySource", "") or "—"),
+                ]
+            )
+        if item.kind == "resource":
+            methods = d.get("resourceMethods") or {}
+            parts = [
+                kv_block(
+                    [
+                        ("Path", d.get("path", item.payload.get("path", "/"))),
+                        ("ID", d.get("id", item.id)),
+                        ("Parent", d.get("parentId", "") or "—"),
+                        ("Methods", "/".join(sorted(methods.keys())) or "—"),
+                    ]
+                )
+            ]
+            if methods:
+                parts.append(section("Integrations"))
+                for method, conf in sorted(methods.items()):
+                    if not isinstance(conf, dict):
+                        parts.append(kv_block([(method.upper(), "(no config)")]))
+                        continue
+                    integ = conf.get("methodIntegration") or {}
+                    parts.append(
+                        kv_block(
+                            [
+                                (method.upper(), integ.get("type", "") or "—"),
+                                ("URI", integ.get("uri", "") or "—"),
+                                ("HTTP method", integ.get("httpMethod", "") or None),
+                            ]
+                        )
+                    )
+            return "\n".join(parts)
+        if item.kind == "stage":
+            vars_ = d.get("variables") or {}
+            parts = [
+                kv_block(
+                    [
+                        ("Stage", d.get("stageName", item.label)),
+                        ("Deployment", d.get("deploymentId", "") or "—"),
+                        ("Description", d.get("description", "") or "—"),
+                        ("Created", d.get("createdDate", "") or "—"),
+                        ("Updated", d.get("lastUpdatedDate", "") or "—"),
+                        ("Tracing", "on" if (d.get("tracingEnabled")) else "off"),
+                        ("Cache cluster", d.get("cacheClusterStatus", "") or "—"),
+                    ]
+                )
+            ]
+            if vars_:
+                parts.append(section("Stage variables"))
+                parts.append(kv_block([(k, v) for k, v in sorted(vars_.items())]))
+            return "\n".join(parts)
+        return detail_fallback(d)
 
     async def links(self, item: Item) -> list[Link]:
         out: list[Link] = []

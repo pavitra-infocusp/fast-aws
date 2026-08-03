@@ -7,7 +7,7 @@ from typing import Any
 
 from botocore.exceptions import ClientError
 
-from fast_aws.fmt import fmt_bytes, fmt_time, pretty, truncate, unquote_ddb
+from fast_aws.fmt import fmt_bytes, fmt_time, kv_block, pretty, section, truncate, unquote_ddb
 from fast_aws.models import Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -95,7 +95,7 @@ class DynamoDBService(ResourceService):
     def describe(self, item: Item, detail: Any) -> str:
         if item.kind == "item":
             if isinstance(detail, dict):
-                return "\n".join(f"[#94a3b8]{k}:[/] {unquote_ddb(v)}" for k, v in detail.items())
+                return kv_block([(k, unquote_ddb(v)) for k, v in detail.items()])
             return str(detail)
         d = detail if isinstance(detail, dict) else {}
         keys = ", ".join(
@@ -104,19 +104,85 @@ class DynamoDBService(ResourceService):
         billing = (d.get("BillingModeSummary") or {}).get("BillingMode", "PROVISIONED")
         stream = (d.get("StreamSpecification") or {}).get("StreamEnabled")
         gsis = d.get("GlobalSecondaryIndexes", [])
-        return "\n".join(
+        return kv_block(
             [
-                f"[#94a3b8]Table:[/] {d.get('TableName', item.label)}",
-                f"[#94a3b8]Status:[/] {d.get('TableStatus', '') or '—'}",
-                f"[#94a3b8]Items:[/] {d.get('ItemCount', 0)}",
-                f"[#94a3b8]Size:[/] {fmt_bytes(d.get('TableSizeBytes', 0))}",
-                f"[#94a3b8]Keys:[/] {keys or '—'}",
-                f"[#94a3b8]Billing:[/] {billing}",
-                f"[#94a3b8]Stream:[/] {'enabled' if stream else 'off'}",
-                f"[#94a3b8]GSI:[/] {len(gsis)}",
-                f"[#94a3b8]Created:[/] {fmt_time(d.get('CreationDateTime'))}",
+                ("Table", d.get("TableName", item.label)),
+                ("Status", d.get("TableStatus", "") or "—"),
+                ("Items", d.get("ItemCount", 0)),
+                ("Size", fmt_bytes(d.get("TableSizeBytes", 0))),
+                ("Keys", keys or "—"),
+                ("Billing", billing),
+                ("Stream", "enabled" if stream else "off"),
+                ("GSI", len(gsis)),
+                ("Created", fmt_time(d.get("CreationDateTime"))),
             ]
         )
+
+    def detail_body(self, item: Item, detail: Any) -> str:
+        if item.kind == "item":
+            if isinstance(detail, dict):
+                return kv_block([(k, unquote_ddb(v)) for k, v in detail.items()])
+            return str(detail)
+        d = detail if isinstance(detail, dict) else {}
+        keys = ", ".join(
+            f"{k.get('AttributeName')} ({k.get('KeyType')})" for k in d.get("KeySchema", [])
+        )
+        attrs = ", ".join(
+            f"{a.get('AttributeName')} ({a.get('AttributeType')})"
+            for a in d.get("AttributeDefinitions", [])
+        )
+        billing = (d.get("BillingModeSummary") or {}).get("BillingMode", "PROVISIONED")
+        stream_spec = d.get("StreamSpecification") or {}
+        parts = [
+            kv_block(
+                [
+                    ("Table", d.get("TableName", item.label)),
+                    ("ARN", d.get("TableArn", "") or "—"),
+                    ("Status", d.get("TableStatus", "") or "—"),
+                    ("Items", d.get("ItemCount", 0)),
+                    ("Size", fmt_bytes(d.get("TableSizeBytes", 0))),
+                    ("Keys", keys or "—"),
+                    ("Attributes", attrs or "—"),
+                    ("Billing", billing),
+                    ("Stream", "enabled" if stream_spec.get("StreamEnabled") else "off"),
+                    ("Stream view", stream_spec.get("StreamViewType", "") or None),
+                    ("Created", fmt_time(d.get("CreationDateTime"))),
+                ]
+            )
+        ]
+        gsis = d.get("GlobalSecondaryIndexes") or []
+        if gsis:
+            parts.append(section("Global secondary indexes"))
+            for g in gsis:
+                gkeys = ", ".join(
+                    f"{k.get('AttributeName')} ({k.get('KeyType')})" for k in g.get("KeySchema", [])
+                )
+                parts.append(
+                    kv_block(
+                        [
+                            ("Name", g.get("IndexName", "")),
+                            ("Status", g.get("IndexStatus", "") or "—"),
+                            ("Keys", gkeys or "—"),
+                            ("Items", g.get("ItemCount", "")),
+                        ]
+                    )
+                )
+        lsis = d.get("LocalSecondaryIndexes") or []
+        if lsis:
+            parts.append(section("Local secondary indexes"))
+            for g in lsis:
+                gkeys = ", ".join(
+                    f"{k.get('AttributeName')} ({k.get('KeyType')})" for k in g.get("KeySchema", [])
+                )
+                parts.append(
+                    kv_block(
+                        [
+                            ("Name", g.get("IndexName", "")),
+                            ("Keys", gkeys or "—"),
+                        ]
+                    )
+                )
+        return "\n".join(parts)
 
     def filter(self, items: list[Item], query: str) -> list[Item]:
         q = query.strip().lower()

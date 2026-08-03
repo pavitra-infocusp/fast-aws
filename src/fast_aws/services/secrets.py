@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fast_aws.fmt import copy_to_clipboard, fmt_time, truncate
+from fast_aws.fmt import copy_to_clipboard, fmt_time, kv_block, truncate
 from fast_aws.models import Action, Item, Page
 from fast_aws.services.base import ResourceService
 
@@ -38,14 +38,33 @@ class SecretsService(ResourceService):
 
     def describe(self, item: Item, detail: Any) -> str:
         d = detail if isinstance(detail, dict) else {}
-        return "\n".join(
+        return kv_block(
             [
-                f"[#94a3b8]Name:[/] {d.get('Name', item.label)}",
-                f"[#94a3b8]ARN:[/] {truncate(d.get('ARN', ''), 60)}",
-                f"[#94a3b8]Description:[/] {d.get('Description', '') or '—'}",
-                f"[#94a3b8]Rotation:[/] {'on' if d.get('RotationEnabled') else 'off'}",
-                f"[#94a3b8]Last changed:[/] {fmt_time(d.get('LastChangedDate'))}",
-                f"[#94a3b8]Created:[/] {fmt_time(d.get('CreatedDate'))}",
+                ("Name", d.get("Name", item.label)),
+                ("ARN", truncate(d.get("ARN", ""), 60)),
+                ("Description", d.get("Description", "") or "—"),
+                ("Rotation", "on" if d.get("RotationEnabled") else "off"),
+                ("Last changed", fmt_time(d.get("LastChangedDate"))),
+                ("Created", fmt_time(d.get("CreatedDate"))),
+            ]
+        )
+
+    def detail_body(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        return kv_block(
+            [
+                ("Name", d.get("Name", item.label)),
+                ("ARN", d.get("ARN", "") or "—"),
+                ("Description", d.get("Description", "") or "—"),
+                ("Rotation", "on" if d.get("RotationEnabled") else "off"),
+                ("Rotation lambda", d.get("RotationLambdaARN", "") or "—"),
+                ("Last rotated", fmt_time(d.get("LastRotatedDate"))),
+                ("Last changed", fmt_time(d.get("LastChangedDate"))),
+                ("Last accessed", fmt_time(d.get("LastAccessedDate"))),
+                ("Created", fmt_time(d.get("CreatedDate"))),
+                ("Deleted", fmt_time(d.get("DeletedDate")) or None),
+                ("Owning service", d.get("OwningService", "") or "—"),
+                ("Primary region", d.get("PrimaryRegion", "") or "—"),
             ]
         )
 

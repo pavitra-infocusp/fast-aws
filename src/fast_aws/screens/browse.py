@@ -10,7 +10,7 @@ from textual.screen import Screen
 from textual.widgets import DataTable, Input, Label, ListItem, ListView, Static
 
 from fast_aws.executor import ReadonlyViolation
-from fast_aws.fmt import pretty, truncate
+from fast_aws.fmt import truncate
 from fast_aws.models import Action, Item, Link, Location, Page
 from fast_aws.screens.palette import PaletteScreen
 from fast_aws.screens.profile_picker import ProfilePicker
@@ -247,9 +247,9 @@ class BrowseScreen(Screen[None]):
             new_path = self._loc.path + [item.id]
             self._navigate(Location(self._loc.service_key, new_path, label=item.label))
         else:
-            self.app.push_screen(
-                ResultScreen(item.label, pretty(self._current_detail or item.payload))
-            )
+            svc = self._services[item.service]
+            body = svc.detail_body(item, self._current_detail or item.payload)
+            self.app.push_screen(ResultScreen(item.label, body, markup=True))
 
     def action_open(self) -> None:
         item = self._selected_item()

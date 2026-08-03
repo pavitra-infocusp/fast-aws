@@ -65,15 +65,16 @@ class ResultScreen(ModalScreen[None]):
         Binding("b", "dismiss", "Close"),
     ]
 
-    def __init__(self, title: str, body: str):
+    def __init__(self, title: str, body: str, *, markup: bool = False):
         super().__init__()
         self._title = title
         self._body = body
+        self._markup = markup
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(classes="dialog"):
             yield Static(self._title, classes="dialog-title")
-            yield Static(self._body, id="result-body")
+            yield Static(self._body, id="result-body", markup=self._markup)
 
     def action_dismiss(self) -> None:
         self.dismiss(None)

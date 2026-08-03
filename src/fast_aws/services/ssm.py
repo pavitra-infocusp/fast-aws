@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fast_aws.fmt import copy_to_clipboard, fmt_time, mask
+from fast_aws.fmt import copy_to_clipboard, fmt_time, kv_block, mask
 from fast_aws.models import Action, Item, Page
 from fast_aws.services.base import ResourceService
 
@@ -48,13 +48,30 @@ class SSMService(ResourceService):
 
     def describe(self, item: Item, detail: Any) -> str:
         d = detail if isinstance(detail, dict) else {}
-        return "\n".join(
+        return kv_block(
             [
-                f"[#94a3b8]Name:[/] {d.get('Name', item.label)}",
-                f"[#94a3b8]Type:[/] {d.get('Type', '') or '—'}",
-                f"[#94a3b8]Tier:[/] {d.get('Tier', '') or '—'}",
-                f"[#94a3b8]Modified:[/] {fmt_time(d.get('LastModifiedDate'))}",
-                f"[#94a3b8]Value:[/] {d.get('Value (masked)', '') or '(hidden — a to reveal)'}",
+                ("Name", d.get("Name", item.label)),
+                ("Type", d.get("Type", "") or "—"),
+                ("Tier", d.get("Tier", "") or "—"),
+                ("Modified", fmt_time(d.get("LastModifiedDate"))),
+                ("Value", d.get("Value (masked)", "") or "(hidden — a to reveal)"),
+            ]
+        )
+
+    def detail_body(self, item: Item, detail: Any) -> str:
+        d = detail if isinstance(detail, dict) else {}
+        return kv_block(
+            [
+                ("Name", d.get("Name", item.label)),
+                ("Type", d.get("Type", "") or "—"),
+                ("Tier", d.get("Tier", "") or "—"),
+                ("Data type", d.get("DataType", "") or "—"),
+                ("Key ID", d.get("KeyId", "") or "—"),
+                ("Version", d.get("Version", "") or "—"),
+                ("Modified", fmt_time(d.get("LastModifiedDate"))),
+                ("Modified by", d.get("LastModifiedUser", "") or "—"),
+                ("Description", d.get("Description", "") or "—"),
+                ("Value", d.get("Value (masked)", "") or "(hidden — a to reveal)"),
             ]
         )
 
