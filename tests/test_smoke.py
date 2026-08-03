@@ -168,6 +168,17 @@ async def settle(pilot, n=4):
     await pilot.pause()
 
 
+async def pick_service(pilot, index: int = 0):
+    """Advance past the post-auth ServicePicker into BrowseScreen."""
+    await settle(pilot)
+    assert pilot.app.screen.__class__.__name__ == "ServicePicker"
+    lv = pilot.app.screen.query_one("#services-pick")
+    lv.index = index
+    await pilot.press("enter")
+    await settle(pilot)
+    assert pilot.app.screen.__class__.__name__ == "BrowseScreen"
+
+
 @pytest.fixture
 def stub_call(monkeypatch):
     async def fake_call(self: Executor, service: str, fn: str, *args, **kwargs):
@@ -185,7 +196,7 @@ async def test_browse_s3_drilldown(stub_call):
 
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:
-        await settle(pilot)
+        await pick_service(pilot)  # S3
         table = app.screen.query_one("#table", DataTable)
         await settle(pilot)
         assert str(app.screen.query_one("#breadcrumb").content)  # breadcrumb set
@@ -215,13 +226,7 @@ async def test_lambda_links_and_jump(stub_call):
 
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:
-        await pilot.pause()
-        # go to Lambda via sidebar
-        sidebar_list = app.screen.query_one("#services")
-        sidebar_list.focus()
-        sidebar_list.index = 1
-        await pilot.press("enter")
-        await settle(pilot)
+        await pick_service(pilot, index=1)  # Lambda
         table = app.screen.query_one("#table", DataTable)
         assert table.row_count >= 1
         await pilot.press("l")
@@ -244,12 +249,7 @@ async def test_secrets_reveal_flow(stub_call):
 
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:
-        await pilot.pause()
-        sidebar_list = app.screen.query_one("#services")
-        sidebar_list.focus()
-        sidebar_list.index = 5  # Secrets Manager
-        await pilot.press("enter")
-        await settle(pilot)
+        await pick_service(pilot, index=5)  # Secrets Manager
         table = app.screen.query_one("#table", DataTable)
         assert table.row_count == 1
         await pilot.press("a")
@@ -266,12 +266,7 @@ async def test_secrets_reveal_flow(stub_call):
 async def test_apigw_jump_to_lambda(stub_call):
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:
-        await pilot.pause()
-        sidebar_list = app.screen.query_one("#services")
-        sidebar_list.focus()
-        sidebar_list.index = 3  # API Gateway
-        await pilot.press("enter")
-        await settle(pilot)
+        await pick_service(pilot, index=3)  # API Gateway
         # drill into the API: Stages, /,   orders,     GET
         await pilot.press("enter")
         await settle(pilot)
@@ -303,12 +298,26 @@ async def test_profile_picker_lists_profiles():
 
 
 @pytest.mark.asyncio
+async def test_service_picker_before_browse(stub_call):
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await settle(pilot)
+        assert app.screen.__class__.__name__ == "ServicePicker"
+        lv = app.screen.query_one("#services-pick")
+        assert len(lv.children) == 9
+        assert "default" in str(app.screen.query_one("#service-note").content)
+        # no AWS list calls until a service is chosen — pick Lambda
+        await pick_service(pilot, index=1)
+        assert "Lambda" in str(app.screen.query_one("#breadcrumb").content)
+
+
+@pytest.mark.asyncio
 async def test_filter_and_back(stub_call):
     from textual.widgets import DataTable
 
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:
-        await settle(pilot)
+        await pick_service(pilot)  # S3
         table = app.screen.query_one("#table", DataTable)
         # drill into bucket → nested tree: app.log, logs/, └─ error.log
         await pilot.press("enter")
@@ -335,7 +344,7 @@ async def test_palette_switch_service(stub_call):
 
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:
-        await settle(pilot)
+        await pick_service(pilot)  # S3
         await pilot.press("ctrl+p")
         await settle(pilot)
         palette = app.screen.query_one("#palette-input")
@@ -353,7 +362,7 @@ async def test_palette_switch_service(stub_call):
 async def test_mode_toggle_readonly_default(stub_call):
     app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
     async with app.run_test(size=(160, 50)) as pilot:
-        await settle(pilot)
+        await pick_service(pilot)  # S3
         assert app.executor.readonly is True
         assert "READONLY" in str(app.screen.query_one("#topbar").content)
         await pilot.press("ctrl+e")

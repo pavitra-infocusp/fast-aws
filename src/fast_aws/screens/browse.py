@@ -89,13 +89,17 @@ class BrowseScreen(Screen[None]):
         lv = self.query_one("#services", ListView)
         for key, _path, label in SIDEBAR:
             lv.append(ListItem(Label(f"{icon_for(key)}  {label}")))
-        lv.focus()
 
         if self._initial is not None:
+            for i, (key, _path, _label) in enumerate(SIDEBAR):
+                if key == self._initial.service_key:
+                    lv.index = i
+                    break
             self._navigate(self._initial, push_history=False)
         else:
-            first = SIDEBAR[0]
-            self._navigate(Location(first[0], first[1], label=first[2]), push_history=False)
+            # Idle until the user picks a service from the sidebar.
+            lv.focus()
+            self._set_status("Select a service to browse")
 
     def _refresh_topbar(self) -> None:
         exec = self.app.executor

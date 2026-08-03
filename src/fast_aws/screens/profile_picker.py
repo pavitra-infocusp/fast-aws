@@ -84,9 +84,9 @@ class ProfilePicker(Screen[None]):
         app.executor = exec
         app.profile = profile.name
         app.region = region
-        from fast_aws.screens.browse import BrowseScreen
+        from fast_aws.screens.service_picker import ServicePicker
 
-        app.switch_screen(BrowseScreen())
+        app.switch_screen(ServicePicker())
 
     def action_quit_app(self) -> None:
         self.app.exit()

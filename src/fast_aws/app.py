@@ -71,14 +71,14 @@ class FastAwsApp(App[None]):
             self.push_screen(NoConfigScreen())
 
     def _init_executor(self, profile: str | None, region: str | None) -> None:
-        """Build the executor and enter the browse screen."""
-        from fast_aws.screens.browse import BrowseScreen
+        """Build the executor and show the service picker."""
+        from fast_aws.screens.service_picker import ServicePicker
 
         self.profile = profile or "default"
         self.region = resolve_region(self.profile, region)
         self.executor = Executor(self.profile, self.region, readonly=self.readonly)
-        browse = BrowseScreen()
+        picker = ServicePicker()
         if self.screen.id == "_default":
-            self.push_screen(browse)
+            self.push_screen(picker)
         else:
-            self.switch_screen(browse)
+            self.switch_screen(picker)
