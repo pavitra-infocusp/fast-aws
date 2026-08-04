@@ -90,7 +90,9 @@ def _obj(extra: dict | None = None) -> dict:
                 }
             ]
         },
-        "get_secret_value": {"SecretString": "sup3rs3cret"},
+        "get_secret_value": {
+            "SecretString": '{"username":"admin","password":"s3cret","host":"db.example"}'
+        },
         "describe_parameters": {
             "Parameters": [{"Name": "/app/timeout", "Type": "String", "Tier": "Standard"}]
         },
@@ -266,7 +268,14 @@ async def test_secrets_reveal_flow(stub_call):
         assert len(actions_list.children) == 2
         await pilot.press("enter")  # reveal
         await settle(pilot)
-        # short secret -> notify, back on browse screen
+        # JSON secret -> pretty ResultScreen (not a toast)
+        assert app.screen.__class__.__name__ == "ResultScreen"
+        from rich.json import JSON
+
+        body = app.screen.query_one("#result-body").content
+        assert isinstance(body, JSON)
+        await pilot.press("escape")
+        await settle(pilot)
         assert app.screen.__class__.__name__ == "BrowseScreen"
 
 

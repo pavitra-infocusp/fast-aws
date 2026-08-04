@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from fast_aws.fmt import copy_to_clipboard, fmt_time, kv_block, truncate
+from rich.console import RenderableType
+
+from fast_aws.fmt import copy_to_clipboard, fmt_time, kv_block, truncate, try_json
 from fast_aws.models import Action, Item, Page
 from fast_aws.services.base import ResourceService
 
@@ -74,7 +76,7 @@ class SecretsService(ResourceService):
             Action("copy", "Copy value to clipboard", False),
         ]
 
-    async def run_action(self, action_id: str, item: Item) -> str:
+    async def run_action(self, action_id: str, item: Item) -> str | RenderableType:
         if action_id in ("reveal", "copy"):
             v = await self.exec.call(
                 "secretsmanager", "get_secret_value", SecretId=item.id, ttl=False, no_cache=True
@@ -86,5 +88,6 @@ class SecretsService(ResourceService):
                 if copy_to_clipboard(value):
                     return f"Copied {len(value)} chars to clipboard"
                 return "Clipboard copy failed (no xclip/wl-copy/pbcopy found)"
-            return value
+            # Pretty-print JSON secrets with Rich highlighting in the result modal.
+            return try_json(value) or value
         return await super().run_action(action_id, item)

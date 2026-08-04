@@ -39,7 +39,7 @@ class ResourceService:
     def actions(self, item: Item) -> list[Action]:
         return []
 
-    async def run_action(self, action_id: str, item: Item) -> str:
+    async def run_action(self, action_id: str, item: Item) -> str | RenderableType:
         return f"Action '{action_id}' is not implemented for {self.name}"
 
     def path_label(self, segment: str) -> str:

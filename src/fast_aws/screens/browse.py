@@ -360,6 +360,9 @@ class BrowseScreen(Screen[None]):
             return
         if result == "OPEN_TAIL":
             self.app.push_screen(TailScreen(item.label, self.app.executor))
+        elif not isinstance(result, str):
+            # Rich renderables (e.g. pretty JSON secret values) always use the modal.
+            self.app.push_screen(ResultScreen(action.label, result))
         elif result and len(result) > 300:
             self.app.push_screen(ResultScreen(action.label, result))
         else:
