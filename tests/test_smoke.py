@@ -450,3 +450,19 @@ async def test_palette_change_theme(stub_call):
         await settle(pilot)
         # Textual theme search palette (CommandPalette), not our PaletteScreen
         assert app.screen.__class__.__name__ == "CommandPalette"
+
+
+@pytest.mark.asyncio
+async def test_modal_backdrop_shows_screen_behind(stub_call):
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await pick_service(pilot)  # S3
+        await pilot.press("ctrl+e")  # ConfirmScreen
+        await settle(pilot)
+        modal = app.screen
+        assert modal.__class__.__name__ == "ConfirmScreen"
+        # a translucent backdrop lets the browse screen composite through
+        assert modal.styles.background.a < 1.0
+        screenshot = app.export_screenshot()
+        assert "demo-bucket" in screenshot
+        assert "READONLY" in screenshot
