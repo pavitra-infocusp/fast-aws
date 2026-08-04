@@ -19,7 +19,7 @@ from botocore.exceptions import (
     UnknownTokenProviderError,
 )
 
-from fast_aws.auth import make_session
+from fast_aws.auth import identity_label_from_arn, make_session
 
 SSO_AUTH_CODES = {
     "ExpiredTokenException",
@@ -71,6 +71,8 @@ class Executor:
         self.region = region
         self.readonly = readonly
         self.ttl = ttl
+        self.identity_label: str | None = None
+        self.account: str | None = None
         self._session: Any = None
         self._clients: dict[str, Any] = {}
         self._cache: dict[tuple, tuple[float, Any]] = {}
@@ -83,6 +85,12 @@ class Executor:
 
     def set_readonly(self, value: bool) -> None:
         self.readonly = value
+
+    def apply_caller_identity(self, identity: dict) -> None:
+        """Store account / role (or user) name from sts:GetCallerIdentity."""
+        self.account = identity.get("Account") or None
+        label = identity_label_from_arn(identity.get("Arn") or "")
+        self.identity_label = label or None
 
     def bust(self) -> None:
         with self._lock:

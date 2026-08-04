@@ -88,7 +88,7 @@ class ProfilePicker(BackdropDismissModal[str | None]):
         region = resolve_region(profile.name, app.cli_region)
         exec = Executor(profile.name, region, readonly=app.readonly)
         try:
-            await retry_on_login(
+            identity = await retry_on_login(
                 app,
                 exec,
                 lambda: exec.call("sts", "get_caller_identity", ttl=False, no_cache=True),
@@ -102,6 +102,7 @@ class ProfilePicker(BackdropDismissModal[str | None]):
             self._set_status(f"Could not authenticate: {truncate(str(exc), 160)}", error=True)
             return
 
+        exec.apply_caller_identity(identity)
         app.executor = exec
         app.profile = profile.name
         app.region = region

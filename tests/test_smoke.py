@@ -151,7 +151,11 @@ def _obj(extra: dict | None = None) -> dict:
         },
         "list_attached_role_policies": {"AttachedPolicies": [{"PolicyName": "MyPolicy"}]},
         "list_policies": {"Policies": [{"PolicyName": "MyPolicy", "AttachmentCount": 1}]},
-        "get_caller_identity": {"Arn": "arn:aws:iam::1:user/test", "Account": "1", "UserId": "1"},
+        "get_caller_identity": {
+            "Arn": "arn:aws:sts::1:assumed-role/AdminRole/test-session",
+            "Account": "1",
+            "UserId": "AROAEXAMPLE:test-session",
+        },
     }
     if extra:
         obj.update(extra)
@@ -404,7 +408,9 @@ async def test_mode_toggle_readonly_default(stub_call):
     async with app.run_test(size=(160, 50)) as pilot:
         await pick_service(pilot)  # S3
         assert app.executor.readonly is True
-        assert "READONLY" in str(app.screen.query_one("#topbar").content)
+        topbar = str(app.screen.query_one("#topbar").content)
+        assert "READONLY" in topbar
+        assert "AdminRole" in topbar
         await pilot.press("ctrl+e")
         await settle(pilot)
         assert app.screen.__class__.__name__ == "ConfirmScreen"

@@ -88,6 +88,7 @@ class BrowseScreen(Screen[None]):
         self._services = build_services(self.app.executor)
         self.app.theme_changed_signal.subscribe(self, self._on_theme_changed)
         self._refresh_topbar()
+        self._resolve_identity()
 
         if self._initial is not None:
             self._navigate(self._initial, push_history=False)
@@ -107,10 +108,29 @@ class BrowseScreen(Screen[None]):
             if exec.readonly
             else theme_var("text-error", "#f87171")
         )
+        role = exec.identity_label
+        role_part = f"[dim]▸[/] {muted_markup(role)} " if role else ""
         self.query_one("#topbar", Static).update(
             f"{primary_markup('fast-aws')} [dim]▸[/] {muted_markup(self.app.profile)} "
-            f"[dim]▸[/] {self.app.region}    [bold {color}]{mode}[/]"
+            f"{role_part}[dim]▸[/] {self.app.region}    [bold {color}]{mode}[/]"
         )
+
+    @work(exclusive=True)
+    async def _resolve_identity(self) -> None:
+        """Fill the topbar role when the executor was built without STS yet."""
+        exec = self.app.executor
+        if exec is None or exec.identity_label:
+            return
+        try:
+            identity = await retry_on_login(
+                self.app,
+                exec,
+                lambda: exec.call("sts", "get_caller_identity", ttl=False, no_cache=True),
+            )
+        except Exception:
+            return
+        exec.apply_caller_identity(identity)
+        self._refresh_topbar()
 
     # -- navigation --------------------------------------------------------
     def _navigate(self, loc: Location, push_history: bool = True) -> None:

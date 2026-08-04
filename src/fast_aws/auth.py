@@ -84,6 +84,28 @@ def resolve_region(profile: str | None, cli_region: str | None = None) -> str:
     return DEFAULT_REGION
 
 
+def identity_label_from_arn(arn: str) -> str:
+    """Short display name from a GetCallerIdentity Arn.
+
+    ``arn:aws:sts::123:assumed-role/Admin/session`` → ``Admin``
+    ``arn:aws:iam::123:role/Admin`` → ``Admin``
+    ``arn:aws:iam::123:user/alice`` → ``alice``
+    ``arn:aws:iam::123:root`` → ``root``
+    """
+    if not arn:
+        return ""
+    # arn:partition:service:region:account:resource
+    parts = arn.split(":", 5)
+    resource = parts[5] if len(parts) == 6 else arn
+    if resource.startswith("assumed-role/"):
+        return resource[len("assumed-role/") :].split("/", 1)[0]
+    if resource.startswith("federated-user/"):
+        return resource[len("federated-user/") :]
+    if "/" in resource:
+        return resource.split("/", 1)[1]
+    return resource
+
+
 def make_session(profile: str | None, region: str):
     """Create a boto3 Session for the given profile. Returns None-able."""
     import boto3
