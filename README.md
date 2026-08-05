@@ -2,16 +2,42 @@
 
 A fast TUI browser for AWS resources, built with [Textual](https://textual.textualize.io) and `boto3`, using your local `~/.aws` profiles and SSO — no web console needed.
 
-## Install & run
+## Install
+
+Requires Python ≥ 3.14 and [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv tool install git+https://github.com/pavitra-infocusp/fast-aws
+```
+
+Then run:
+
+```bash
+fast-aws --profile my-sso-profile --region us-east-1
+```
+
+Launch without `--profile` to pick one from a menu.
+
+## Update
+
+```bash
+uv tool upgrade fast-aws
+```
+
+Or reinstall from the latest git tip:
+
+```bash
+uv tool install --force git+https://github.com/pavitra-infocusp/fast-aws
+```
+
+## Development / hot reload
+
+From a local clone:
 
 ```bash
 uv sync
 uv run fast-aws --profile my-sso-profile --region us-east-1
 ```
-
-Launch without `--profile` to pick one from a menu.
-
-## Development / hot reload
 
 Run the app through Textual's dev runner (live CSS reload + devtools console):
 
@@ -23,7 +49,6 @@ uv run textual run --dev -c "fast-aws --profile my-sso-profile"
 Edit `src/fast_aws/ui/app.tcss` while it runs and the change applies live.
 Run `uv run textual console` in a second terminal to see `print()`/`log()`
 output and Textual events.
-
 
 ## Features
 
