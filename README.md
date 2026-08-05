@@ -4,10 +4,18 @@ A fast TUI browser for AWS resources, built with [Textual](https://textual.textu
 
 ## Install
 
-Requires Python ≥ 3.14 and [uv](https://docs.astral.sh/uv/).
+Requires Python ≥ 3.14.
+
+**uv:**
 
 ```bash
 uv tool install git+https://github.com/pavitra-infocusp/fast-aws
+```
+
+**mise:**
+
+```bash
+mise use -g pipx:pavitra-infocusp/fast-aws
 ```
 
 Then run:
