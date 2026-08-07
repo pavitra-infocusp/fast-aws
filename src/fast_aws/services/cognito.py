@@ -118,13 +118,13 @@ class CognitoService(ResourceService):
             )
 
         if path[0] == IDENTITY_DIR:
-            return await self._list_identity_pools()
+            return await self._list_identity_pools(cursor=cursor)
 
         if path[0] != POOLS_DIR:
             return Page(["Value"], [])
 
         if len(path) == 1:
-            return await self._list_user_pools()
+            return await self._list_user_pools(cursor=cursor)
 
         pool_id = path[1]
         if len(path) == 2:
@@ -132,19 +132,22 @@ class CognitoService(ResourceService):
 
         section_id = path[2]
         if section_id == USERS_DIR:
-            return await self._list_users(pool_id)
+            return await self._list_users(pool_id, cursor=cursor)
         if section_id == GROUPS_DIR:
-            return await self._list_groups(pool_id)
+            return await self._list_groups(pool_id, cursor=cursor)
         if section_id == CLIENTS_DIR:
-            return await self._list_clients(pool_id)
+            return await self._list_clients(pool_id, cursor=cursor)
         if section_id == PROVIDERS_DIR:
-            return await self._list_providers(pool_id)
+            return await self._list_providers(pool_id, cursor=cursor)
         if section_id == TRIGGERS_DIR:
             return await self._list_triggers(pool_id)
         return Page(["Value"], [])
 
-    async def _list_user_pools(self) -> Page:
-        resp = await self.exec.call("cognito-idp", "list_user_pools", MaxResults=60, ttl=60)
+    async def _list_user_pools(self, *, cursor: str | None = None) -> Page:
+        kwargs: dict[str, Any] = {"MaxResults": 60, "ttl": 60}
+        if cursor:
+            kwargs["NextToken"] = cursor
+        resp = await self.exec.call("cognito-idp", "list_user_pools", **kwargs)
         items = [
             Item(
                 self.key,
@@ -157,7 +160,7 @@ class CognitoService(ResourceService):
             )
             for p in resp.get("UserPools", [])
         ]
-        return Page(["User pool", "ID", "Status"], items)
+        return Page(["User pool", "ID", "Status"], items, cursor=resp.get("NextToken"))
 
     def _pool_hub(self, pool_id: str) -> Page:
         base = {"UserPoolId": pool_id}
@@ -221,10 +224,11 @@ class CognitoService(ResourceService):
             ],
         )
 
-    async def _list_users(self, pool_id: str) -> Page:
-        resp = await self.exec.call(
-            "cognito-idp", "list_users", UserPoolId=pool_id, Limit=60, ttl=30
-        )
+    async def _list_users(self, pool_id: str, *, cursor: str | None = None) -> Page:
+        kwargs: dict[str, Any] = {"UserPoolId": pool_id, "Limit": 60, "ttl": 30}
+        if cursor:
+            kwargs["PaginationToken"] = cursor
+        resp = await self.exec.call("cognito-idp", "list_users", **kwargs)
         items = []
         for u in resp.get("Users", []):
             attrs = u.get("Attributes") or []
@@ -244,12 +248,17 @@ class CognitoService(ResourceService):
                     payload={"UserPoolId": pool_id, **u},
                 )
             )
-        return Page(["Username", "Status", "Email", "Created"], items)
-
-    async def _list_groups(self, pool_id: str) -> Page:
-        resp = await self.exec.call(
-            "cognito-idp", "list_groups", UserPoolId=pool_id, Limit=60, ttl=60
+        return Page(
+            ["Username", "Status", "Email", "Created"],
+            items,
+            cursor=resp.get("PaginationToken"),
         )
+
+    async def _list_groups(self, pool_id: str, *, cursor: str | None = None) -> Page:
+        kwargs: dict[str, Any] = {"UserPoolId": pool_id, "Limit": 60, "ttl": 60}
+        if cursor:
+            kwargs["NextToken"] = cursor
+        resp = await self.exec.call("cognito-idp", "list_groups", **kwargs)
         items = [
             Item(
                 self.key,
@@ -265,16 +274,13 @@ class CognitoService(ResourceService):
             )
             for g in resp.get("Groups", [])
         ]
-        return Page(["Group", "Description", "Precedence"], items)
+        return Page(["Group", "Description", "Precedence"], items, cursor=resp.get("NextToken"))
 
-    async def _list_clients(self, pool_id: str) -> Page:
-        resp = await self.exec.call(
-            "cognito-idp",
-            "list_user_pool_clients",
-            UserPoolId=pool_id,
-            MaxResults=60,
-            ttl=60,
-        )
+    async def _list_clients(self, pool_id: str, *, cursor: str | None = None) -> Page:
+        kwargs: dict[str, Any] = {"UserPoolId": pool_id, "MaxResults": 60, "ttl": 60}
+        if cursor:
+            kwargs["NextToken"] = cursor
+        resp = await self.exec.call("cognito-idp", "list_user_pool_clients", **kwargs)
         items = [
             Item(
                 self.key,
@@ -286,16 +292,13 @@ class CognitoService(ResourceService):
             )
             for c in resp.get("UserPoolClients", [])
         ]
-        return Page(["Client", "ID"], items)
+        return Page(["Client", "ID"], items, cursor=resp.get("NextToken"))
 
-    async def _list_providers(self, pool_id: str) -> Page:
-        resp = await self.exec.call(
-            "cognito-idp",
-            "list_identity_providers",
-            UserPoolId=pool_id,
-            MaxResults=60,
-            ttl=60,
-        )
+    async def _list_providers(self, pool_id: str, *, cursor: str | None = None) -> Page:
+        kwargs: dict[str, Any] = {"UserPoolId": pool_id, "MaxResults": 60, "ttl": 60}
+        if cursor:
+            kwargs["NextToken"] = cursor
+        resp = await self.exec.call("cognito-idp", "list_identity_providers", **kwargs)
         items = [
             Item(
                 self.key,
@@ -307,7 +310,7 @@ class CognitoService(ResourceService):
             )
             for p in resp.get("Providers", [])
         ]
-        return Page(["Provider", "Type"], items)
+        return Page(["Provider", "Type"], items, cursor=resp.get("NextToken"))
 
     async def _list_triggers(self, pool_id: str) -> Page:
         try:
@@ -342,10 +345,11 @@ class CognitoService(ResourceService):
         items.sort(key=lambda i: i.label.lower())
         return Page(["Trigger", "Lambda"], items)
 
-    async def _list_identity_pools(self) -> Page:
-        resp = await self.exec.call(
-            "cognito-identity", "list_identity_pools", MaxResults=60, ttl=60
-        )
+    async def _list_identity_pools(self, *, cursor: str | None = None) -> Page:
+        kwargs: dict[str, Any] = {"MaxResults": 60, "ttl": 60}
+        if cursor:
+            kwargs["NextToken"] = cursor
+        resp = await self.exec.call("cognito-identity", "list_identity_pools", **kwargs)
         items = [
             Item(
                 self.key,
@@ -358,7 +362,7 @@ class CognitoService(ResourceService):
             )
             for p in resp.get("IdentityPools", [])
         ]
-        return Page(["Identity pool", "ID"], items)
+        return Page(["Identity pool", "ID"], items, cursor=resp.get("NextToken"))
 
     async def detail(self, item: Item) -> dict:
         if item.kind == "user_pool":
