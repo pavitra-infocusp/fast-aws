@@ -91,7 +91,7 @@ class CognitoService(ResourceService):
     def path_label(self, segment: str) -> str:
         return _DIR_LABELS.get(segment, segment)
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
             return Page(
                 ["Section"],

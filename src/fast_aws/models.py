@@ -21,10 +21,15 @@ class Item:
 
 @dataclass
 class Page:
-    """The result of listing a service location."""
+    """The result of listing a service location.
+
+    ``cursor`` is an opaque continuation token for the next AWS page.
+    ``None`` means there are no further pages.
+    """
 
     columns: list[str]
     items: list[Item]
+    cursor: str | None = None
 
 
 @dataclass

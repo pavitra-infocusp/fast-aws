@@ -14,7 +14,7 @@ class SSMService(ResourceService):
     name = "SSM Parameter Store"
     icon = "🔧"
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         resp = await self.exec.call("ssm", "describe_parameters", ttl=60)
         items = [
             Item(

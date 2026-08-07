@@ -19,7 +19,7 @@ class DynamoDBService(ResourceService):
     name = "DynamoDB"
     icon = "🏬"
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
             names = (await self.exec.call("dynamodb", "list_tables", ttl=30)).get("TableNames", [])
             items: list[Item] = []

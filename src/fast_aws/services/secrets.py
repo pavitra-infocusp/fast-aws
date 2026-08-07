@@ -16,7 +16,7 @@ class SecretsService(ResourceService):
     name = "Secrets Manager"
     icon = "🔐"
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         # list_secrets pages at MaxResults (default 100); follow NextToken for all.
         secrets: list[dict] = []
         token: str | None = None

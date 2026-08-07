@@ -8,7 +8,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
 from textual.theme import Theme
-from textual.widgets import DataTable, Footer, Input, Static
+from textual.widgets import Footer, Input, Static
 
 from fast_aws.executor import ReadonlyViolation
 from fast_aws.fmt import muted_markup, primary_markup, theme_var, truncate
@@ -17,8 +17,8 @@ from fast_aws.screens.palette import PaletteScreen
 from fast_aws.screens.profile_picker import ProfilePicker
 from fast_aws.screens.tail import TailScreen
 from fast_aws.services import SIDEBAR, build_services, service_root
-from fast_aws.services.base import _pad
 from fast_aws.ui.flow import retry_on_login
+from fast_aws.ui.lazy_table import LazyDataTable
 from fast_aws.ui.widgets import (
     ActionsScreen,
     ConfirmScreen,
@@ -52,8 +52,6 @@ class BrowseScreen(Screen[None]):
         self._services: dict[str, object] = {}
         self._history: list[Location] = []
         self._loc: Location | None = None
-        self._page_items: list[Item] = []
-        self._rows: list[Item] = []
         self._filter_query = ""
         self._current: Item | None = None
         self._current_detail: object | None = None
@@ -71,7 +69,7 @@ class BrowseScreen(Screen[None]):
                 with Horizontal(id="filter-row", classes="hidden"):
                     yield Static("Filter:", id="filter-label")
                     yield Input(id="filter", placeholder="type to filter…")
-                yield DataTable(id="table", cursor_type="row", zebra_stripes=True)
+                yield LazyDataTable(id="table", cursor_type="row", zebra_stripes=True)
                 yield Static("", id="status")
             with VerticalScroll(id="inspector"):
                 yield Static("Inspector", id="insp-title")
@@ -155,41 +153,74 @@ class BrowseScreen(Screen[None]):
             self._set_status(f"Error loading {svc.name}: {truncate(str(exc), 160)}", error=True)
             return
         self._render_page(loc, page)
-        self._set_status(f"{svc.name} · {len(self._page_items)} items")
 
     def _render_page(self, loc: Location, page: Page) -> None:
         self._loc = loc
         self._filter_query = ""
         self._update_breadcrumb()
-        table = self.query_one("#table", DataTable)
-        table.clear(columns=True)
-        cols = page.columns or ["Value"]
-        for col in cols:
-            table.add_column(col, key=col)
-        self._page_items = page.items
-        self._rebuild_table()
+        table = self.query_one("#table", LazyDataTable)
+        table.reset(page.columns or ["Value"])
+        table.set_page(page.items, cursor=page.cursor)
         if loc.selected_id:
-            self._select_id(loc.selected_id)
+            table.select_id(loc.selected_id)
         table.focus()
+        self._set_list_status(svc_name=self._services[loc.service_key].name, table=table)
 
-    def _rebuild_table(self) -> None:
+    def _set_list_status(self, *, svc_name: str, table: LazyDataTable) -> None:
+        n = table.loaded_count
+        suffix = "+" if table.has_more else " items"
+        self._set_status(f"{svc_name} · {n}{suffix}")
+
+    @work(exclusive=False)
+    async def _load_more(self) -> None:
+        loc = self._loc
+        if loc is None:
+            return
+        table = self.query_one("#table", LazyDataTable)
+        cursor = table.next_cursor
+        if cursor is None:
+            table.end_loading()
+            return
+        svc = self._services[loc.service_key]
+        try:
+            page = await retry_on_login(
+                self.app,
+                self.app.executor,
+                lambda: svc.list_page(loc.path, cursor=cursor),
+            )
+        except Exception as exc:
+            table.end_loading()
+            self._set_status(f"Error loading more: {truncate(str(exc), 160)}", error=True)
+            return
+        # Location may have changed while the fetch was in flight.
+        if self._loc is not loc:
+            table.end_loading()
+            return
+        table.append_page(page.items, cursor=page.cursor)
+        if self._filter_query:
+            self._apply_local_filter()
+
+    def on_lazy_data_table_more_needed(self, _event: LazyDataTable.MoreNeeded) -> None:
+        self._load_more()
+
+    def on_lazy_data_table_page_loaded(self, event: LazyDataTable.PageLoaded) -> None:
+        if self._loc is None:
+            return
         svc = self._services[self._loc.service_key]
-        items = svc.filter(self._page_items, self._filter_query)
-        table = self.query_one("#table", DataTable)
-        table.clear()
-        n = len(table.columns)
-        self._rows = []
-        for i, item in enumerate(items):
-            table.add_row(*_pad(item, n), key=f"row{i}")
-            self._rows.append(item)
-        if self._rows:
-            table.move_cursor(row=0)
+        suffix = "+" if event.has_more else " items"
+        self._set_status(f"{svc.name} · {event.loaded}{suffix}")
 
-    def _select_id(self, selected_id: str) -> None:
-        for i, item in enumerate(self._rows):
-            if item.id == selected_id:
-                self.query_one("#table", DataTable).move_cursor(row=i)
-                return
+    def _apply_local_filter(self) -> None:
+        table = self.query_one("#table", LazyDataTable)
+        if self._loc is None:
+            return
+        svc = self._services[self._loc.service_key]
+        q = self._filter_query
+
+        def pred(item: Item) -> bool:
+            return bool(svc.filter([item], q))
+
+        table.apply_filter(None if not q.strip() else pred)
 
     def _update_breadcrumb(self) -> None:
         svc = self._services[self._loc.service_key]
@@ -214,21 +245,18 @@ class BrowseScreen(Screen[None]):
 
     # -- selection / inspector ---------------------------------------------
     def _selected_item(self) -> Item | None:
-        table = self.query_one("#table", DataTable)
-        row = table.cursor_row
-        if 0 <= row < len(self._rows):
-            return self._rows[row]
-        return None
+        table = self.query_one("#table", LazyDataTable)
+        return table.item_at(table.cursor_row)
 
-    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        row = event.cursor_row
-        if 0 <= row < len(self._rows):
-            self._load_detail(self._rows[row])
+    def on_data_table_row_highlighted(self, event: LazyDataTable.RowHighlighted) -> None:
+        item = self.query_one("#table", LazyDataTable).item_at(event.cursor_row)
+        if item is not None:
+            self._load_detail(item)
 
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        row = event.cursor_row
-        if 0 <= row < len(self._rows):
-            self._open_item(self._rows[row])
+    def on_data_table_row_selected(self, event: LazyDataTable.RowSelected) -> None:
+        item = self.query_one("#table", LazyDataTable).item_at(event.cursor_row)
+        if item is not None:
+            self._open_item(item)
 
     @work(exclusive=False)
     async def _load_detail(self, item: Item) -> None:
@@ -377,7 +405,7 @@ class BrowseScreen(Screen[None]):
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "filter":
             self._filter_query = event.value
-            self._rebuild_table()
+            self._apply_local_filter()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "filter":
@@ -389,8 +417,8 @@ class BrowseScreen(Screen[None]):
         inp = self.query_one("#filter", Input)
         inp.value = ""
         self._filter_query = ""
-        self._rebuild_table()
-        self.query_one("#table", DataTable).focus()
+        self._apply_local_filter()
+        self.query_one("#table", LazyDataTable).focus()
 
     # -- top-level ---------------------------------------------------------
     def action_refresh(self) -> None:
@@ -499,11 +527,12 @@ class BrowseScreen(Screen[None]):
             self.notify("Inspector hidden — i to show", timeout=2)
 
     def action_top(self) -> None:
-        table = self.query_one("#table", DataTable)
-        if self._rows:
+        table = self.query_one("#table", LazyDataTable)
+        if table.rows_items:
             table.move_cursor(row=0)
 
     def action_bottom(self) -> None:
-        table = self.query_one("#table", DataTable)
-        if self._rows:
-            table.move_cursor(row=len(self._rows) - 1)
+        # Jump to end of loaded rows only — never drain remaining pages.
+        table = self.query_one("#table", LazyDataTable)
+        if table.rows_items:
+            table.move_cursor(row=len(table.rows_items) - 1)

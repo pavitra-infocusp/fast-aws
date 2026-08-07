@@ -29,7 +29,7 @@ class CloudWatchService(ResourceService):
     name = "CloudWatch Logs"
     icon = "📜"
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
             resp = await self.exec.call("logs", "describe_log_groups", limit=100, ttl=30)
             items = [

@@ -18,7 +18,7 @@ class LambdaService(ResourceService):
     name = "Lambda"
     icon = "λ"
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         resp = await self.exec.call("lambda", "list_functions", ttl=30)
         items = [
             Item(

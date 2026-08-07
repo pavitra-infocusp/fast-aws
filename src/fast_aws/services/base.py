@@ -19,7 +19,11 @@ class ResourceService:
     def __init__(self, exec: Executor):
         self.exec = exec
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
+        """Return one page of items. Never drain the AWS paginator.
+
+        ``cursor`` is the opaque token from a previous ``Page.cursor``.
+        """
         raise NotImplementedError
 
     async def detail(self, item: Item) -> Any:

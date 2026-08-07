@@ -88,7 +88,7 @@ class IAMService(ResourceService):
     name = "IAM"
     icon = "🪪"
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
             return Page(
                 ["Type"],

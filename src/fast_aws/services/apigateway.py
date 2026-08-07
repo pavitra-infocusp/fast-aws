@@ -124,7 +124,7 @@ class ApiGatewayService(ResourceService):
     def path_label(self, segment: str) -> str:
         return _DIR_LABELS.get(segment, segment)
 
-    async def list_page(self, path: list[str]) -> Page:
+    async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
             resp = await self.exec.call("apigateway", "get_rest_apis", ttl=60)
             items = [
