@@ -31,7 +31,8 @@ class CloudWatchService(ResourceService):
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
-            kwargs: dict[str, Any] = {"limit": 100, "ttl": 30}
+            # DescribeLogGroups caps limit at 50.
+            kwargs: dict[str, Any] = {"limit": 50, "ttl": 30}
             if cursor:
                 kwargs["nextToken"] = cursor
             resp = await self.exec.call("logs", "describe_log_groups", **kwargs)

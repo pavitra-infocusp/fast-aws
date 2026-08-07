@@ -15,7 +15,8 @@ class SSMService(ResourceService):
     icon = "🔧"
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
-        kwargs: dict[str, Any] = {"MaxResults": 100, "ttl": 60}
+        # DescribeParameters caps MaxResults at 50.
+        kwargs: dict[str, Any] = {"MaxResults": 50, "ttl": 60}
         if cursor:
             kwargs["NextToken"] = cursor
         resp = await self.exec.call("ssm", "describe_parameters", **kwargs)
