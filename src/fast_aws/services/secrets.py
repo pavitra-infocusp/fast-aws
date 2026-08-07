@@ -17,18 +17,10 @@ class SecretsService(ResourceService):
     icon = "🔐"
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
-        # list_secrets pages at MaxResults (default 100); follow NextToken for all.
-        secrets: list[dict] = []
-        token: str | None = None
-        while True:
-            kwargs: dict[str, Any] = {"MaxResults": 100, "ttl": 60}
-            if token:
-                kwargs["NextToken"] = token
-            resp = await self.exec.call("secretsmanager", "list_secrets", **kwargs)
-            secrets.extend(resp.get("SecretList", []))
-            token = resp.get("NextToken")
-            if not token:
-                break
+        kwargs: dict[str, Any] = {"MaxResults": 100, "ttl": 60}
+        if cursor:
+            kwargs["NextToken"] = cursor
+        resp = await self.exec.call("secretsmanager", "list_secrets", **kwargs)
         items = [
             Item(
                 self.key,
@@ -42,9 +34,13 @@ class SecretsService(ResourceService):
                 kind="secret",
                 payload=s,
             )
-            for s in secrets
+            for s in resp.get("SecretList", [])
         ]
-        return Page(["Name", "Description", "Rotation"], items)
+        return Page(
+            ["Name", "Description", "Rotation"],
+            items,
+            cursor=resp.get("NextToken"),
+        )
 
     async def detail(self, item: Item) -> dict:
         return item.payload
