@@ -19,7 +19,10 @@ class LambdaService(ResourceService):
     icon = "λ"
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
-        resp = await self.exec.call("lambda", "list_functions", ttl=30)
+        kwargs: dict[str, Any] = {"MaxItems": 50, "ttl": 30}
+        if cursor:
+            kwargs["Marker"] = cursor
+        resp = await self.exec.call("lambda", "list_functions", **kwargs)
         items = [
             Item(
                 self.key,
@@ -36,7 +39,11 @@ class LambdaService(ResourceService):
             )
             for f in resp.get("Functions", [])
         ]
-        return Page(["Function", "Runtime", "State", "Modified"], items)
+        return Page(
+            ["Function", "Runtime", "State", "Modified"],
+            items,
+            cursor=resp.get("NextMarker"),
+        )
 
     async def detail(self, item: Item) -> dict:
         try:

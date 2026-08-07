@@ -254,6 +254,60 @@ async def test_lambda_links_and_jump(stub_call):
 
 
 @pytest.mark.asyncio
+async def test_lambda_lazy_loads_second_page(monkeypatch):
+    """list_functions returns one page; MoreNeeded appends the next."""
+    from fast_aws.ui.lazy_table import LazyDataTable
+
+    page1 = {
+        "Functions": [
+            {
+                "FunctionName": "fn-a",
+                "Runtime": "python3.12",
+                "State": "Active",
+                "LastModified": "2024-03-01T00:00:00+00:00",
+                "Role": "arn:aws:iam::1:role/r",
+            }
+        ],
+        "NextMarker": "page2",
+    }
+    page2 = {
+        "Functions": [
+            {
+                "FunctionName": "fn-b",
+                "Runtime": "python3.12",
+                "State": "Active",
+                "LastModified": "2024-03-02T00:00:00+00:00",
+                "Role": "arn:aws:iam::1:role/r",
+            }
+        ],
+    }
+    stub = _obj({"list_functions": page1})
+
+    async def fake_call(self: Executor, service: str, fn: str, *args, **kwargs):
+        if fn == "list_functions":
+            return page2 if kwargs.get("Marker") == "page2" else page1
+        resp = stub.get(fn)
+        if resp is None:
+            raise Exception(f"unexpected stub call: {service}.{fn}")
+        return resp
+
+    monkeypatch.setattr(Executor, "call", fake_call)
+
+    app = FastAwsApp(profile="default", region="us-east-1", readonly=True)
+    async with app.run_test(size=(160, 50)) as pilot:
+        await pick_service(pilot, index=1)  # Lambda
+        table = app.screen.query_one("#table", LazyDataTable)
+        # A short first page is always "near the end", so MoreNeeded fires
+        # and appends page 2 without an explicit scroll.
+        await settle(pilot)
+        assert table.row_count == 2
+        assert not table.has_more
+        labels = [i.label for i in table.rows_items]
+        assert labels == ["fn-a", "fn-b"]
+        assert "2 items" in str(app.screen.query_one("#status").content)
+
+
+@pytest.mark.asyncio
 async def test_secrets_reveal_flow(stub_call):
     from textual.widgets import DataTable
 
