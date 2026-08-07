@@ -20,12 +20,18 @@ class DynamoDBService(ResourceService):
     icon = "🏬"
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
-        if not path:
-            names = (await self.exec.call("dynamodb", "list_tables", ttl=30)).get("TableNames", [])
+        if not path or path == ["tables"]:
+            kwargs: dict[str, Any] = {"Limit": 100, "ttl": 30}
+            if cursor:
+                kwargs["ExclusiveStartTableName"] = cursor
+            resp = await self.exec.call("dynamodb", "list_tables", **kwargs)
+            names = resp.get("TableNames", [])
             items: list[Item] = []
             for name in names:
                 try:
-                    d = await self.exec.call("dynamodb", "describe_table", TableName=name, ttl=300)
+                    d = await self.exec.call(
+                        "dynamodb", "describe_table", TableName=name, ttl=300
+                    )
                     t = d.get("Table", {})
                     items.append(
                         Item(
@@ -55,9 +61,14 @@ class DynamoDBService(ResourceService):
                             payload={"TableName": name},
                         )
                     )
-            return Page(["Table", "Status", "Size", "Items"], items)
+            return Page(
+                ["Table", "Status", "Size", "Items"],
+                items,
+                cursor=resp.get("LastEvaluatedTableName"),
+            )
 
-        table = path[0]
+        # Bounded item preview — intentionally not continued via cursor.
+        table = path[-1]
         resp = await self.exec.call("dynamodb", "scan", TableName=table, Limit=SCAN_LIMIT, ttl=15)
         items = []
         for row in resp.get("Items", []):
