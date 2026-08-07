@@ -151,7 +151,7 @@ class LambdaService(ResourceService):
             mappings = await self.exec.call(
                 "lambda", "list_event_source_mappings", FunctionName=fn, ttl=60
             )
-        except ClientError, LoginRequired:
+        except (ClientError, LoginRequired):
             mappings = {}
         for m in mappings.get("EventSourceMappings", []):
             arn = m.get("EventSourceArn", "")
