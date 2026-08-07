@@ -125,7 +125,10 @@ class IAMService(ResourceService):
 
         kind = path[0]
         if kind == USERS_DIR:
-            resp = await self.exec.call("iam", "list_users", ttl=60)
+            kwargs: dict[str, Any] = {"MaxItems": 100, "ttl": 60}
+            if cursor:
+                kwargs["Marker"] = cursor
+            resp = await self.exec.call("iam", "list_users", **kwargs)
             items = [
                 Item(
                     self.key,
@@ -137,10 +140,14 @@ class IAMService(ResourceService):
                 )
                 for u in resp.get("Users", [])
             ]
-            return Page(["User", "Created"], items)
+            next_cursor = resp.get("Marker") if resp.get("IsTruncated") else None
+            return Page(["User", "Created"], items, cursor=next_cursor)
 
         if kind == ROLES_DIR:
-            resp = await self.exec.call("iam", "list_roles", ttl=60)
+            kwargs = {"MaxItems": 100, "ttl": 60}
+            if cursor:
+                kwargs["Marker"] = cursor
+            resp = await self.exec.call("iam", "list_roles", **kwargs)
             items = [
                 Item(
                     self.key,
@@ -152,9 +159,13 @@ class IAMService(ResourceService):
                 )
                 for r in resp.get("Roles", [])
             ]
-            return Page(["Role", "ARN"], items)
+            next_cursor = resp.get("Marker") if resp.get("IsTruncated") else None
+            return Page(["Role", "ARN"], items, cursor=next_cursor)
 
-        resp = await self.exec.call("iam", "list_policies", Scope="Local", ttl=60)
+        kwargs = {"Scope": "Local", "MaxItems": 100, "ttl": 60}
+        if cursor:
+            kwargs["Marker"] = cursor
+        resp = await self.exec.call("iam", "list_policies", **kwargs)
         items = [
             Item(
                 self.key,
@@ -166,7 +177,8 @@ class IAMService(ResourceService):
             )
             for p in resp.get("Policies", [])
         ]
-        return Page(["Policy", "Attachments"], items)
+        next_cursor = resp.get("Marker") if resp.get("IsTruncated") else None
+        return Page(["Policy", "Attachments"], items, cursor=next_cursor)
 
     async def detail(self, item: Item) -> dict:
         if item.kind == "role":
@@ -295,7 +307,11 @@ class IAMService(ResourceService):
         if item.kind == "role":
             try:
                 resp = await self.exec.call(
-                    "iam", "list_attached_role_policies", RoleName=item.id, ttl=60
+                    "iam",
+                    "list_attached_role_policies",
+                    RoleName=item.id,
+                    MaxItems=100,
+                    ttl=60,
                 )
             except ClientError:
                 resp = {}
@@ -311,7 +327,9 @@ class IAMService(ResourceService):
                 )
         if item.kind == "user":
             try:
-                resp = await self.exec.call("iam", "list_user_policies", UserName=item.id, ttl=60)
+                resp = await self.exec.call(
+                    "iam", "list_user_policies", UserName=item.id, MaxItems=100, ttl=60
+                )
             except ClientError:
                 resp = {}
             for p in resp.get("PolicyNames", []):
