@@ -126,7 +126,10 @@ class ApiGatewayService(ResourceService):
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
-            resp = await self.exec.call("apigateway", "get_rest_apis", ttl=60)
+            kwargs: dict[str, Any] = {"limit": 100, "ttl": 60}
+            if cursor:
+                kwargs["position"] = cursor
+            resp = await self.exec.call("apigateway", "get_rest_apis", **kwargs)
             items = [
                 Item(
                     self.key,
@@ -139,30 +142,34 @@ class ApiGatewayService(ResourceService):
                 )
                 for a in resp.get("items", [])
             ]
-            return Page(["API name", "Created"], items)
+            return Page(["API name", "Created"], items, cursor=resp.get("position"))
 
         api = path[0]
         if len(path) == 1:
-            resp = await self.exec.call(
-                "apigateway", "get_resources", restApiId=api, limit=500, ttl=60
-            )
-            items = [
-                Item(
-                    self.key,
-                    STAGES_DIR,
-                    "── Stages ──",
-                    ("── Stages ──", ""),
-                    kind="dir",
-                    is_dir=True,
-                    payload={"api_id": api},
+            kwargs = {"restApiId": api, "limit": 100, "ttl": 60}
+            if cursor:
+                kwargs["position"] = cursor
+            resp = await self.exec.call("apigateway", "get_resources", **kwargs)
+            items: list[Item] = []
+            if cursor is None:
+                items.append(
+                    Item(
+                        self.key,
+                        STAGES_DIR,
+                        "── Stages ──",
+                        ("── Stages ──", ""),
+                        kind="dir",
+                        is_dir=True,
+                        payload={"api_id": api},
+                    )
                 )
-            ]
             items.extend(_resource_tree_items(api, resp.get("items", [])))
-            return Page(["Resource", "Type"], items)
+            return Page(["Resource", "Type"], items, cursor=resp.get("position"))
 
         if path[1] != STAGES_DIR:
             return Page(["Value"], [])
 
+        # get_stages has no paginator — single call.
         resp = await self.exec.call("apigateway", "get_stages", restApiId=api, ttl=60)
         items = [
             Item(

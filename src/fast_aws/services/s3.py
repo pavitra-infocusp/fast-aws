@@ -136,7 +136,10 @@ class S3Service(ResourceService):
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
-            resp = await self.exec.call("s3", "list_buckets", ttl=60)
+            kwargs: dict[str, Any] = {"MaxBuckets": 1000, "ttl": 60}
+            if cursor:
+                kwargs["ContinuationToken"] = cursor
+            resp = await self.exec.call("s3", "list_buckets", **kwargs)
             items = [
                 Item(
                     self.key,
@@ -149,16 +152,23 @@ class S3Service(ResourceService):
                 )
                 for b in resp.get("Buckets", [])
             ]
-            return Page(["Bucket", "Created"], items)
+            return Page(
+                ["Bucket", "Created"],
+                items,
+                cursor=resp.get("ContinuationToken"),
+            )
 
         bucket = path[0]
         prefix = path[1] if len(path) > 1 else ""
-        resp = await self.exec.call(
-            "s3", "list_objects_v2", Bucket=bucket, Prefix=prefix, MaxKeys=1000
-        )
+        kwargs = {"Bucket": bucket, "Prefix": prefix, "MaxKeys": 1000, "ttl": 30}
+        if cursor:
+            kwargs["ContinuationToken"] = cursor
+        resp = await self.exec.call("s3", "list_objects_v2", **kwargs)
+        next_cursor = resp.get("NextContinuationToken") if resp.get("IsTruncated") else None
         return Page(
             ["Key", "Size", "Last modified"],
             _object_tree_items(bucket, resp.get("Contents", []), base_prefix=prefix),
+            cursor=next_cursor,
         )
 
     async def detail(self, item: Item) -> dict:
