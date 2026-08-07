@@ -31,7 +31,10 @@ class CloudWatchService(ResourceService):
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
         if not path:
-            resp = await self.exec.call("logs", "describe_log_groups", limit=100, ttl=30)
+            kwargs: dict[str, Any] = {"limit": 100, "ttl": 30}
+            if cursor:
+                kwargs["nextToken"] = cursor
+            resp = await self.exec.call("logs", "describe_log_groups", **kwargs)
             items = [
                 Item(
                     self.key,
@@ -49,19 +52,24 @@ class CloudWatchService(ResourceService):
                 )
                 for g in resp.get("logGroups", [])
             ]
-            return Page(["Log group", "Bytes", "Created", "Retention(d)"], items)
+            return Page(
+                ["Log group", "Bytes", "Created", "Retention(d)"],
+                items,
+                cursor=resp.get("nextToken"),
+            )
 
         group = path[0]
         if len(path) == 1:
-            resp = await self.exec.call(
-                "logs",
-                "describe_log_streams",
-                logGroupName=group,
-                orderBy="LastEventTime",
-                descending=True,
-                limit=50,
-                ttl=15,
-            )
+            kwargs = {
+                "logGroupName": group,
+                "orderBy": "LastEventTime",
+                "descending": True,
+                "limit": 50,
+                "ttl": 15,
+            }
+            if cursor:
+                kwargs["nextToken"] = cursor
+            resp = await self.exec.call("logs", "describe_log_streams", **kwargs)
             items = [
                 Item(
                     self.key,
@@ -74,8 +82,9 @@ class CloudWatchService(ResourceService):
                 )
                 for s in resp.get("logStreams", [])
             ]
-            return Page(["Stream", "Last event"], items)
+            return Page(["Stream", "Last event"], items, cursor=resp.get("nextToken"))
 
+        # Event preview stays intentionally bounded (no cursor continuation).
         stream = path[1]
         resp = await self.exec.call(
             "logs",

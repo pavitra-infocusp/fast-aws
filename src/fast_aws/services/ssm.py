@@ -15,7 +15,10 @@ class SSMService(ResourceService):
     icon = "🔧"
 
     async def list_page(self, path: list[str], *, cursor: str | None = None) -> Page:
-        resp = await self.exec.call("ssm", "describe_parameters", ttl=60)
+        kwargs: dict[str, Any] = {"MaxResults": 100, "ttl": 60}
+        if cursor:
+            kwargs["NextToken"] = cursor
+        resp = await self.exec.call("ssm", "describe_parameters", **kwargs)
         items = [
             Item(
                 self.key,
@@ -32,7 +35,11 @@ class SSMService(ResourceService):
             )
             for p in resp.get("Parameters", [])
         ]
-        return Page(["Name", "Type", "Tier", "Modified"], items)
+        return Page(
+            ["Name", "Type", "Tier", "Modified"],
+            items,
+            cursor=resp.get("NextToken"),
+        )
 
     async def detail(self, item: Item) -> dict:
         try:
