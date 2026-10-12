@@ -28,6 +28,9 @@ from fast_aws.ui.widgets import (
 )
 
 
+NARROW_WIDTH = 110
+
+
 class BrowseScreen(Screen[None]):
     BINDINGS = [
         Binding("ctrl+p", "palette", "Palette"),
@@ -49,6 +52,8 @@ class BrowseScreen(Screen[None]):
     def __init__(self, initial: Location | None = None):
         super().__init__()
         self._initial = initial
+        self._narrow = False
+        self._force_inspector = False
         self._services: dict[str, object] = {}
         self._history: list[Location] = []
         self._loc: Location | None = None
@@ -71,9 +76,7 @@ class BrowseScreen(Screen[None]):
                 yield LazyDataTable(id="table", cursor_type="row", zebra_stripes=False)
                 yield Static("", id="status")
             with VerticalScroll(id="inspector"):
-                yield Static("Inspector", id="insp-title")
                 yield Static("", id="insp-kind")
-                yield Static("Enter → full JSON · i → hide panel", id="insp-note")
                 yield Static("", id="insp-detail")
                 yield Static("Linked resources (l)", classes="insp-section")
                 yield Static("", id="insp-links")
@@ -85,6 +88,7 @@ class BrowseScreen(Screen[None]):
         self.query_one("#main").border_title = "Resources"
         self.query_one("#status").add_class("hidden")
         self.query_one("#inspector").border_title = "Inspector"
+        self.query_one("#inspector").border_subtitle = "Enter · full JSON"
         self._services = build_services(self.app.executor)
         self.app.theme_changed_signal.subscribe(self, self._on_theme_changed)
         self._refresh_topbar()
@@ -288,7 +292,7 @@ class BrowseScreen(Screen[None]):
         self, item: Item, detail: object, links: list[Link], actions: list[Action]
     ) -> None:
         svc = self._services[item.service]
-        self.query_one("#insp-title", Static).update(item.label)
+        self.query_one("#inspector").border_title = item.label
         self.query_one("#insp-kind", Static).update(f"{svc.icon} {svc.name} · {item.kind}")
         body = svc.describe(item, detail)
         self.query_one("#insp-detail", Static).update(body)
@@ -525,7 +529,20 @@ class BrowseScreen(Screen[None]):
             lambda yes: self.app.exit() if yes else None,
         )
 
+    def on_resize(self, event) -> None:
+        # Narrow terminals give the table the whole width; `i` brings the
+        # inspector back on demand.
+        self._narrow = event.size.width < NARROW_WIDTH
+        self._sync_narrow()
+
+    def _sync_narrow(self) -> None:
+        self.set_class(self._narrow and not self._force_inspector, "narrow-hide")
+
     def action_toggle_inspector(self) -> None:
+        if self._narrow:
+            self._force_inspector = not self._force_inspector
+            self._sync_narrow()
+            return
         inspector = self.query_one("#inspector")
         if inspector.has_class("hidden"):
             inspector.remove_class("hidden")

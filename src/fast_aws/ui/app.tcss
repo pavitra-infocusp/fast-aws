@@ -89,20 +89,16 @@ DataTable:focus {
 
 /* ---- inspector --------------------------------------------------------- */
 #inspector {
-    width: 42;
+    width: 32%;
+    min-width: 34;
+    max-width: 60;
     background: transparent;
 }
-#insp-title {
-    text-style: bold;
-    color: $text-primary;
-    padding: 1 1 0 1;
+BrowseScreen.narrow-hide #inspector {
+    display: none;
 }
 #insp-kind {
     color: $foreground-muted;
-    padding: 0 1;
-}
-#insp-note {
-    color: $foreground-disabled;
     padding: 0 1;
 }
 #insp-detail {
