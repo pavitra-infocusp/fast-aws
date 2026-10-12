@@ -20,7 +20,7 @@ ModalScreen {
     height: 3;
     dock: top;
     background: transparent;
-    border: round $border-blurred;
+    border: round ansi_bright_black;
     color: $foreground-muted;
     padding: 0 1;
 }
@@ -41,7 +41,7 @@ ListView > ListItem > Label {
     height: 1fr;
 }
 #main, #inspector {
-    border: round $border-blurred;
+    border: round ansi_bright_black;
     border-title-color: $text-primary;
     border-title-style: bold;
 }
@@ -62,7 +62,7 @@ ListView > ListItem > Label {
 #filter-row {
     height: 3;
     background: transparent;
-    border: round $border-blurred;
+    border: round ansi_bright_black;
 }
 #filter-label {
     padding: 0 1;
