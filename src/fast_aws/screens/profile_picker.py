@@ -8,7 +8,7 @@ from textual.binding import Binding
 from textual.containers import VerticalScroll
 from textual.widgets import Label, ListItem, ListView, Static
 
-from fast_aws.auth import list_profiles, resolve_region
+from fast_aws.auth import format_expiry, list_profiles, resolve_region, sso_session_expiry
 from fast_aws.executor import AuthError, Executor
 from fast_aws.fmt import truncate
 from fast_aws.ui.flow import retry_on_login
@@ -39,13 +39,16 @@ class ProfilePicker(BackdropDismissModal[str | None]):
 
     def compose(self) -> ComposeResult:
         items = []
+        name_w = max((len(p.name) for p in self._profiles), default=0)
+        region_w = max((len(p.region) for p in self._profiles), default=0)
         for p in self._profiles:
             marker = "●" if p.name == self._current else " "
-            badge = "SSO" if p.is_sso else "AKIA"
-            region = f" · {p.region}" if p.region else ""
+            badge = "SSO " if p.is_sso else "AKIA"
+            expiry = format_expiry(sso_session_expiry(p)) if p.is_sso else ""
+            text = f"{marker} {p.name:<{name_w}}  [{badge}]  {p.region:<{region_w}}  {expiry}"
             items.append(
                 ListItem(
-                    Label(f"{marker} {p.name:<24} [{badge}]{region}", markup=False),
+                    Label(text.rstrip(), markup=False),
                     classes="current" if p.name == self._current else "",
                 )
             )

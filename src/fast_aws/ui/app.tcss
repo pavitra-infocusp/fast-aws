@@ -165,7 +165,7 @@ ModalScreen {
 
 /* ---- pickers ----------------------------------------------------------- */
 #profile-dialog, #service-dialog {
-    width: 64;
+    width: 88;
 }
 #profiles, #services-pick {
     margin: 1 0 0 0;
