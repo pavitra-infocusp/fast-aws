@@ -34,14 +34,14 @@ NARROW_WIDTH = 110
 class BrowseScreen(Screen[None]):
     BINDINGS = [
         Binding("ctrl+p", "palette", "Palette"),
-        Binding("r", "refresh", "Refresh"),
-        Binding("ctrl+e", "toggle_mode", "Mode"),
-        Binding("ctrl+a", "switch_profile", "Profile"),
+        Binding("r", "refresh", "Refresh", show=False),
+        Binding("ctrl+e", "toggle_mode", "Mode", show=False),
+        Binding("ctrl+a", "switch_profile", "Profile", show=False),
         Binding("s", "switch_service", "Service"),
         Binding("escape", "back", "Back"),
         Binding("l", "links", "Links"),
         Binding("a", "actions", "Actions"),
-        Binding("i", "toggle_inspector", "Inspector"),
+        Binding("i", "toggle_inspector", "Inspector", show=False),
         Binding("/", "filter", "Filter"),
         Binding("f", "filter", "Filter", show=False),
         Binding("g", "top", "Top", show=False),
@@ -497,6 +497,7 @@ class BrowseScreen(Screen[None]):
             ("Switch profile", "profile"),
             ("Change theme", "theme"),
             ("Toggle Readonly/Edit mode", "mode"),
+            ("Toggle inspector", "inspector"),
             ("Refresh (clear cache)", "refresh"),
             ("Quit fast-aws", "quit"),
         ]
@@ -515,6 +516,8 @@ class BrowseScreen(Screen[None]):
             self.app.action_change_theme()
         elif value == "mode":
             self.action_toggle_mode()
+        elif value == "inspector":
+            self.action_toggle_inspector()
         elif value == "refresh":
             self.action_refresh()
         elif value == "quit":
