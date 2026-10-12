@@ -1,4 +1,4 @@
-"""Main browse screen: list, breadcrumb, inspector, relationships."""
+"""Main browse screen: list, inspector, relationships."""
 
 from __future__ import annotations
 
@@ -65,7 +65,6 @@ class BrowseScreen(Screen[None]):
         yield Static(id="topbar")
         with Horizontal(id="layout"):
             with Vertical(id="main"):
-                yield Static("", id="breadcrumb")
                 with Horizontal(id="filter-row", classes="hidden"):
                     yield Static("Filter:", id="filter-label")
                     yield Input(id="filter", placeholder="type to filter…")
@@ -84,6 +83,7 @@ class BrowseScreen(Screen[None]):
 
     def on_mount(self) -> None:
         self.query_one("#main").border_title = "Resources"
+        self.query_one("#status").add_class("hidden")
         self.query_one("#inspector").border_title = "Inspector"
         self._services = build_services(self.app.executor)
         self.app.theme_changed_signal.subscribe(self, self._on_theme_changed)
@@ -171,7 +171,7 @@ class BrowseScreen(Screen[None]):
     def _set_list_status(self, *, svc_name: str, table: LazyDataTable) -> None:
         n = table.loaded_count
         suffix = "+" if table.has_more else " items"
-        self._set_status(f"{svc_name} · {n}{suffix}")
+        self._set_count(f"{n}{suffix}")
 
     @work(exclusive=False)
     async def _load_more(self) -> None:
@@ -210,7 +210,7 @@ class BrowseScreen(Screen[None]):
             return
         svc = self._services[self._loc.service_key]
         suffix = "+" if event.has_more else " items"
-        self._set_status(f"{svc.name} · {event.loaded}{suffix}")
+        self._set_count(f"{event.loaded}{suffix}")
 
     def _apply_local_filter(self) -> None:
         table = self.query_one("#table", LazyDataTable)
@@ -243,7 +243,7 @@ class BrowseScreen(Screen[None]):
             ):
                 fg = theme_var("foreground", "#e2e8f0")
                 parts.append(f"[dim]▸[/][{fg}]{truncate(self._current.label, 40)}[/]")
-        self.query_one("#breadcrumb", Static).update("  ".join(parts))
+        self.query_one("#main").border_title = " ".join(parts)
 
     # -- selection / inspector ---------------------------------------------
     def _selected_item(self) -> Item | None:
@@ -302,10 +302,16 @@ class BrowseScreen(Screen[None]):
         self.query_one("#insp-actions", Static).update(act_lines)
         self._update_breadcrumb()
 
+    def _set_count(self, text: str) -> None:
+        """Item count lives on the pane's bottom border; the status row hides."""
+        self.query_one("#main").border_subtitle = text
+        self.query_one("#status").add_class("hidden")
+
     def _set_status(self, msg: str, error: bool = False) -> None:
         status = self.query_one("#status", Static)
         status.update(msg)
         status.set_class(error, "error")
+        status.remove_class("hidden")
 
     # -- actions -----------------------------------------------------------
     def _open_item(self, item: Item) -> None:

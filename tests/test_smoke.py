@@ -205,7 +205,7 @@ async def test_browse_s3_drilldown(stub_call):
         await pick_service(pilot)  # S3
         table = app.screen.query_one("#table", DataTable)
         await settle(pilot)
-        assert str(app.screen.query_one("#breadcrumb").content)  # breadcrumb set
+        assert str(app.screen.query_one("#main").border_title)  # breadcrumb set
         assert table.row_count == 1  # one bucket
 
         # drill into bucket → nested tree: app.log, logs/, └─ error.log
@@ -246,7 +246,7 @@ async def test_lambda_links_and_jump(stub_call):
         # jump to the log group (first link)
         await pilot.press("enter")
         await settle(pilot)
-        assert "/aws/lambda/my-fn" in str(app.screen.query_one("#breadcrumb").content)
+        assert "/aws/lambda/my-fn" in str(app.screen.query_one("#main").border_title)
         # jump lands on the log group's streams → one enter reaches the events table
         await pilot.press("enter")
         await settle(pilot)
@@ -304,7 +304,7 @@ async def test_lambda_lazy_loads_second_page(monkeypatch):
         assert not table.has_more
         labels = [i.label for i in table.rows_items]
         assert labels == ["fn-a", "fn-b"]
-        assert "2 items" in str(app.screen.query_one("#status").content)
+        assert "2 items" in str(app.screen.query_one("#main").border_subtitle)
 
 
 @pytest.mark.asyncio
@@ -352,7 +352,7 @@ async def test_apigw_jump_to_lambda(stub_call):
         await pilot.press("enter")
         await settle(pilot)
         # jumped into Lambda and auto-selected the orders-handler function
-        assert "Lambda" in str(app.screen.query_one("#breadcrumb").content)
+        assert "Lambda" in str(app.screen.query_one("#main").border_title)
         assert app.screen._current is not None
         assert app.screen._current.label == "orders-handler"
 
@@ -379,7 +379,7 @@ async def test_service_picker_before_browse(stub_call):
         assert "default" in str(app.screen.query_one("#service-note").content)
         # no AWS list calls until a service is chosen — pick Lambda
         await pick_service(pilot, index=1)
-        assert "Lambda" in str(app.screen.query_one("#breadcrumb").content)
+        assert "Lambda" in str(app.screen.query_one("#main").border_title)
 
 
 @pytest.mark.asyncio

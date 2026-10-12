@@ -49,16 +49,6 @@ ListView > ListItem > Label {
     border: round $primary;
 }
 
-#breadcrumb {
-    height: 1;
-    padding: 0 1;
-    color: $foreground-muted;
-    background: transparent;
-}
-#breadcrumb .crumb-sep {
-    color: $foreground-disabled;
-}
-
 #filter-row {
     height: 3;
     background: transparent;
