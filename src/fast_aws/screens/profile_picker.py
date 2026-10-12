@@ -57,11 +57,12 @@ class ProfilePicker(BackdropDismissModal[str | None]):
         hint = "Esc to go back" if self._cancellable else "Esc to quit"
         title = "Switch profile" if self._cancellable else "fast-aws"
 
-        with VerticalScroll(id="profile-dialog", classes="dialog"):
-            yield Static(title, classes="dialog-title")
+        dialog = VerticalScroll(id="profile-dialog", classes="dialog")
+        dialog.border_title = title
+        dialog.border_subtitle = f"Enter to select · {hint}"
+        with dialog:
             yield Static("Select an AWS profile to browse", classes="dialog-note")
             yield ListView(*items, initial_index=index, id="profiles")
-            yield Static(f"Enter to select · {hint}", classes="dialog-note")
             yield Static("", id="profile-status", classes="dialog-note")
 
     def on_mount(self) -> None:

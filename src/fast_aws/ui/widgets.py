@@ -72,8 +72,10 @@ class ConfirmScreen(BackdropDismissModal[bool]):
         return False
 
     def compose(self) -> ComposeResult:
-        with VerticalScroll(classes="dialog small"):
-            yield Static(self._title, classes="dialog-title")
+        dialog = VerticalScroll(classes="dialog small")
+        dialog.border_title = self._title
+        dialog.border_subtitle = "Enter to confirm · Esc to cancel"
+        with dialog:
             yield Static(self._question)
             yield Button("No", variant="default", id="no")
             yield Button("Yes", variant="error" if self._danger else "primary", id="yes")
@@ -105,8 +107,10 @@ class ResultScreen(BackdropDismissModal[None]):
         self._markup = markup if isinstance(body, str) else False
 
     def compose(self) -> ComposeResult:
-        with VerticalScroll(classes="dialog"):
-            yield Static(self._title, classes="dialog-title")
+        dialog = VerticalScroll(classes="dialog")
+        dialog.border_title = self._title
+        dialog.border_subtitle = "Esc to close"
+        with dialog:
             yield Static(self._body, id="result-body", markup=self._markup)
 
     def action_dismiss(self) -> None:
@@ -125,9 +129,10 @@ class LinksScreen(BackdropDismissModal[Link | None]):
     def compose(self) -> ComposeResult:
         from textual.widgets import Label, ListItem, ListView
 
-        with VerticalScroll(classes="dialog small"):
-            yield Static("Jump to linked resource", classes="dialog-title")
-            yield Label("Press Enter to jump, Esc to cancel", classes="dialog-note")
+        dialog = VerticalScroll(classes="dialog small")
+        dialog.border_title = "Jump to linked resource"
+        dialog.border_subtitle = "Enter to jump · Esc to cancel"
+        with dialog:
             items = [
                 ListItem(Label(f"{icon_for(link.service)}  {link.title}")) for link in self._links
             ]
@@ -156,8 +161,10 @@ class ActionsScreen(BackdropDismissModal[Action | None]):
     def compose(self) -> ComposeResult:
         from textual.widgets import Label, ListItem, ListView
 
-        with VerticalScroll(classes="dialog small"):
-            yield Static("Actions", classes="dialog-title")
+        dialog = VerticalScroll(classes="dialog small")
+        dialog.border_title = "Actions"
+        dialog.border_subtitle = "Enter to run · Esc to cancel"
+        with dialog:
             if self._readonly:
                 yield Label(
                     "Readonly mode — mutating actions hidden (Ctrl+E to enable Edit)",

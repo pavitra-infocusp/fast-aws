@@ -39,11 +39,12 @@ class ServicePicker(BackdropDismissModal[str | None]):
         index = keys.index(self._current) if self._current in keys else 0
         hint = "Esc to go back" if self._cancellable else "Esc to quit"
 
-        with VerticalScroll(id="service-dialog", classes="dialog"):
-            yield Static("Select a service", classes="dialog-title")
+        dialog = VerticalScroll(id="service-dialog", classes="dialog")
+        dialog.border_title = "Select a service"
+        dialog.border_subtitle = f"Enter to open · {hint}"
+        with dialog:
             yield Static(id="service-note", classes="dialog-note")
             yield ListView(*items, initial_index=index, id="services-pick")
-            yield Static(f"Enter to open · {hint}", classes="dialog-note")
 
     def on_mount(self) -> None:
         app = self.app

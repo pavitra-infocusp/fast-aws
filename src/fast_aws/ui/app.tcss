@@ -142,6 +142,11 @@ ModalScreen {
     border: round $primary;
     padding: 1 2;
 }
+.dialog {
+    border-title-color: $text-primary;
+    border-title-style: bold;
+    border-subtitle-color: $foreground-muted;
+}
 .dialog.small {
     width: 46;
 }

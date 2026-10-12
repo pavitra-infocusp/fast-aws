@@ -19,8 +19,10 @@ class PaletteScreen(BackdropDismissModal[str | None]):
         self._filtered: list[tuple[str, str]] = []
 
     def compose(self) -> ComposeResult:
-        with VerticalScroll(classes="dialog small"):
-            yield Static("Command palette", classes="dialog-title")
+        dialog = VerticalScroll(classes="dialog small")
+        dialog.border_title = "Command palette"
+        dialog.border_subtitle = "Enter to run · Esc to cancel"
+        with dialog:
             yield Input(id="palette-input", placeholder="type to filter…")
             yield ListView(id="palette-list", classes="dialog-list")
 

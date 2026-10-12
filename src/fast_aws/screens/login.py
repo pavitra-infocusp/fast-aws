@@ -24,8 +24,10 @@ class LoginScreen(BackdropDismissModal[str]):
         return "cancel"
 
     def compose(self) -> ComposeResult:
-        with VerticalScroll(classes="dialog"):
-            yield Static("SSO login", classes="dialog-title")
+        dialog = VerticalScroll(classes="dialog")
+        dialog.border_title = "SSO login"
+        dialog.border_subtitle = "Esc to cancel"
+        with dialog:
             yield Static(
                 "If a browser did not open automatically, copy the URL below and authorize in it.",
                 classes="dialog-note",
