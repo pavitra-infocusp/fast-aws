@@ -73,6 +73,16 @@ DataTable {
 DataTable:focus {
     border: none;
 }
+/* accent text instead of a filled bar, so it works on any terminal bg */
+DataTable > .datatable--cursor, DataTable:focus > .datatable--cursor {
+    background: transparent;
+    color: $text-primary;
+    text-style: bold;
+}
+DataTable > .datatable--header {
+    color: $foreground-muted;
+    text-style: bold;
+}
 
 #status {
     height: 1;
