@@ -203,3 +203,14 @@ LoadingIndicator {
     align: center middle;
     height: 1fr;
 }
+
+/* ---- dim the page behind a modal --------------------------------------- */
+Screen.dimmed * {
+    text-style: dim;
+}
+Screen.dimmed #main, Screen.dimmed #inspector, Screen.dimmed #topbar {
+    border: round ansi_bright_black;
+}
+Screen.dimmed DataTable > .datatable--cursor {
+    background: transparent;
+}

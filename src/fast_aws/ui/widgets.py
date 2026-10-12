@@ -49,6 +49,20 @@ class BackdropDismissModal(ModalScreen[T], Generic[T]):
         """False when the dialog must stay open, e.g. nothing to go back to."""
         return True
 
+    def on_mount(self) -> None:
+        # Dim the screen underneath: the terminal bg is transparent so there is
+        # no scrim to draw, and `text-style: dim` is what separates the layers.
+        stack = self.app.screen_stack
+        idx = stack.index(self) if self in stack else 0
+        self._below = stack[idx - 1] if idx > 0 else None
+        if self._below is not None:
+            self._below.add_class("dimmed")
+
+    def on_unmount(self) -> None:
+        below = getattr(self, "_below", None)
+        if below is not None:
+            below.remove_class("dimmed")
+
     def on_click(self, event: events.Click) -> None:
         if not self._allow_backdrop_dismiss():
             return
