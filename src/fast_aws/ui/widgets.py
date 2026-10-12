@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Generic, TypeVar
 
 from rich.console import RenderableType
@@ -13,6 +14,8 @@ from textual.css.query import NoMatches
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
+from fast_aws import fmt
+from fast_aws.fmt import toggle_reveal_secrets
 from fast_aws.models import Action, Link
 
 SERVICE_ICONS: dict[str, str] = {
@@ -97,10 +100,19 @@ class ResultScreen(BackdropDismissModal[None]):
         Binding("escape", "dismiss", "Close"),
         Binding("q", "dismiss", "Close"),
         Binding("b", "dismiss", "Close"),
+        Binding("v", "reveal", "Reveal secrets", show=False),
     ]
 
-    def __init__(self, title: str, body: str | RenderableType, *, markup: bool = False):
+    def __init__(
+        self,
+        title: str,
+        body: str | RenderableType,
+        *,
+        markup: bool = False,
+        rebuild: Callable[[], str | RenderableType] | None = None,
+    ):
         super().__init__()
+        self._rebuild = rebuild
         self._title = title
         self._body = body
         # Rich renderables carry their own styles; never parse them as markup.
@@ -109,12 +121,24 @@ class ResultScreen(BackdropDismissModal[None]):
     def compose(self) -> ComposeResult:
         dialog = VerticalScroll(classes="dialog")
         dialog.border_title = self._title
-        dialog.border_subtitle = "Esc to close"
+        dialog.border_subtitle = (
+            "v reveal/hide secrets · Esc to close" if self._rebuild else "Esc to close"
+        )
         with dialog:
             yield Static(self._body, id="result-body", markup=self._markup)
 
     def action_dismiss(self) -> None:
         self.dismiss(None)
+
+    def on_unmount(self) -> None:
+        fmt.reveal_secrets = False
+
+    def action_reveal(self) -> None:
+        if self._rebuild is None:
+            return
+        shown = toggle_reveal_secrets()
+        self.query_one("#result-body", Static).update(self._rebuild())
+        self.notify("Secrets revealed" if shown else "Secrets hidden", timeout=2)
 
 
 class LinksScreen(BackdropDismissModal[Link | None]):

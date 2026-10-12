@@ -8,7 +8,7 @@ from typing import Any
 from botocore.exceptions import ClientError
 
 from fast_aws.executor import LoginRequired
-from fast_aws.fmt import fmt_bytes, fmt_time, kv_block, section, truncate
+from fast_aws.fmt import fmt_bytes, fmt_time, kv_block, mask_secret, section, truncate
 from fast_aws.models import Action, Item, Link, Page
 from fast_aws.services.base import ResourceService
 
@@ -107,7 +107,7 @@ class LambdaService(ResourceService):
         env = ((cfg.get("Environment") or {}).get("Variables")) or {}
         if env:
             parts.append(section("Environment"))
-            parts.append(kv_block([(k, v) for k, v in sorted(env.items())]))
+            parts.append(kv_block([(k, mask_secret(k, v)) for k, v in sorted(env.items())]))
         code = d.get("Code") if isinstance(d, dict) else None
         if isinstance(code, dict) and code:
             parts.append(section("Code"))

@@ -34,3 +34,12 @@ def test_set_theme_preserves_other_keys():
 def test_get_theme_ignores_non_string():
     config.save({"theme": 123})
     assert config.get_theme() == config.DEFAULT_THEME
+
+
+def test_mask_secret():
+    from fast_aws import fmt
+
+    assert fmt.mask_secret("API_TOKEN", "abc") == fmt.MASK
+    assert fmt.mask_secret("REGION", "us-east-1") == "us-east-1"
+    masked = fmt.mask_secret("DATABASE_URL", "postgresql://u:pw@host:5432/db")
+    assert "pw" not in masked and "u:" in masked and "@host" in masked

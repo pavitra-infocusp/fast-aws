@@ -324,8 +324,12 @@ class BrowseScreen(Screen[None]):
             self._navigate(Location(self._loc.service_key, new_path, label=item.label))
         else:
             svc = self._services[item.service]
-            body = svc.detail_body(item, self._current_detail or item.payload)
-            self.app.push_screen(ResultScreen(item.label, body, markup=True))
+            detail = self._current_detail or item.payload
+
+            def rebuild() -> str:
+                return svc.detail_body(item, detail)
+
+            self.app.push_screen(ResultScreen(item.label, rebuild(), markup=True, rebuild=rebuild))
 
     def action_open(self) -> None:
         item = self._selected_item()

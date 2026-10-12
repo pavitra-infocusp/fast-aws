@@ -229,6 +229,29 @@ def kv_block(pairs: list[tuple[str, Any]], empty: str = "—") -> str:
     return "\n".join(lines) if lines else "(no details)"
 
 
+_SECRET_KEY_RE = re.compile(r"secret|password|passwd|token|api[_-]?key|private|credential", re.I)
+_URL_CRED_RE = re.compile(r"(://[^/\s:@]+:)[^@\s/]+(@)")
+MASK = "••••••••"
+
+reveal_secrets = False
+"""Process-wide toggle; flipped by the `v` key in the detail modal."""
+
+
+def mask_secret(key: str, value: Any) -> Any:
+    """Hide values whose key looks sensitive and passwords inside URLs."""
+    if reveal_secrets or not isinstance(value, str) or not value:
+        return value
+    if _SECRET_KEY_RE.search(key):
+        return MASK
+    return _URL_CRED_RE.sub(rf"\1{MASK}\2", value)
+
+
+def toggle_reveal_secrets() -> bool:
+    global reveal_secrets
+    reveal_secrets = not reveal_secrets
+    return reveal_secrets
+
+
 def section(title: str) -> str:
     """Section header for rich modal bodies."""
     return f"\n{primary_markup(title)}"
