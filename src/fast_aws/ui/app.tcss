@@ -2,11 +2,25 @@
     display: none;
 }
 
+/* ---- transparent base (terminal background shows through) ------------- */
+Screen, ModalScreen, #layout, #main, Footer, Footer > *, FooterKey, FooterLabel,
+DataTable, DataTable > .datatable--header, ListView, ListItem, Input, VerticalScroll {
+    background: transparent;
+}
+Screen {
+    background: ansi_default;
+}
+ModalScreen {
+    background: transparent;
+}
+
+
 /* ---- top bar ---------------------------------------------------------- */
 #topbar {
-    height: 2;
+    height: 3;
     dock: top;
-    background: $panel;
+    background: transparent;
+    border: round $border-blurred;
     color: $foreground-muted;
     padding: 0 1;
 }
@@ -26,12 +40,20 @@ ListView > ListItem > Label {
 #main {
     height: 1fr;
 }
+#main, #inspector {
+    border: round $border-blurred;
+    border-title-color: $text-primary;
+    border-title-style: bold;
+}
+#main:focus-within, #inspector:focus-within {
+    border: round $primary;
+}
 
 #breadcrumb {
     height: 1;
     padding: 0 1;
     color: $foreground-muted;
-    background: $panel;
+    background: transparent;
 }
 #breadcrumb .crumb-sep {
     color: $foreground-disabled;
@@ -39,8 +61,8 @@ ListView > ListItem > Label {
 
 #filter-row {
     height: 3;
-    background: $panel;
-    border-bottom: solid $border-blurred;
+    background: transparent;
+    border: round $border-blurred;
 }
 #filter-label {
     padding: 0 1;
@@ -56,7 +78,7 @@ ListView > ListItem > Label {
 
 DataTable {
     height: 1fr;
-    border-bottom: solid $border-blurred;
+    border: none;
 }
 DataTable:focus {
     border: none;
@@ -66,7 +88,7 @@ DataTable:focus {
     height: 1;
     padding: 0 1;
     color: $foreground-muted;
-    background: $panel;
+    background: transparent;
 }
 #status.error {
     color: $text-error;
@@ -77,9 +99,8 @@ DataTable:focus {
 
 /* ---- inspector --------------------------------------------------------- */
 #inspector {
-    width: 40;
-    background: $panel;
-    border-left: solid $border-blurred;
+    width: 42;
+    background: transparent;
 }
 #insp-title {
     text-style: bold;
@@ -117,8 +138,8 @@ ModalScreen {
     max-width: 92%;
     height: auto;
     max-height: 90%;
-    background: $surface;
-    border: tall $border;
+    background: $background;
+    border: round $primary;
     padding: 1 2;
 }
 .dialog.small {
@@ -176,7 +197,7 @@ Button {
 }
 
 RichLog {
-    background: $background;
+    background: transparent;
     border: round $border;
     height: 1fr;
     padding: 0 1;

@@ -24,8 +24,8 @@ class NoConfigScreen(Screen[None]):
     #msg {
         width: 68;
         max-width: 92%;
-        background: $surface;
-        border: tall $border;
+        background: $background;
+        border: round $primary;
         padding: 2;
     }
     """
@@ -52,6 +52,7 @@ class FastAwsApp(App[None]):
     SUB_TITLE = "browse AWS resources"
     CSS_PATH = str(CSS_PATH)
     ENABLE_COMMAND_PALETTE = False  # we ship our own palette on ctrl+p
+    ansi_color = True  # use terminal colours; no painted background
 
     def __init__(
         self,

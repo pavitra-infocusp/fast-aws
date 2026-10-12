@@ -69,7 +69,7 @@ class BrowseScreen(Screen[None]):
                 with Horizontal(id="filter-row", classes="hidden"):
                     yield Static("Filter:", id="filter-label")
                     yield Input(id="filter", placeholder="type to filter…")
-                yield LazyDataTable(id="table", cursor_type="row", zebra_stripes=True)
+                yield LazyDataTable(id="table", cursor_type="row", zebra_stripes=False)
                 yield Static("", id="status")
             with VerticalScroll(id="inspector"):
                 yield Static("Inspector", id="insp-title")
@@ -83,6 +83,8 @@ class BrowseScreen(Screen[None]):
         yield Footer(show_command_palette=False)
 
     def on_mount(self) -> None:
+        self.query_one("#main").border_title = "Resources"
+        self.query_one("#inspector").border_title = "Inspector"
         self._services = build_services(self.app.executor)
         self.app.theme_changed_signal.subscribe(self, self._on_theme_changed)
         self._refresh_topbar()
